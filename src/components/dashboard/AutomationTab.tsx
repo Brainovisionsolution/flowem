@@ -60,12 +60,11 @@ export const AutomationTab: React.FC = () => {
   };
 
   const handleRunTest = async () => {
+    if (!selectedWorkflow) return;
     const res = await api.testAutomation();
     setTestResult(res.message);
     setTimeout(() => setTestResult(null), 4000);
   };
-
-  if (!selectedWorkflow) return null;
 
   return (
     <div className="space-y-6">
@@ -81,36 +80,38 @@ export const AutomationTab: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleRunTest}
-            className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-sky-700 border border-slate-200 shadow-xs transition flex items-center gap-2"
-          >
-            <Zap className="w-4 h-4 text-sky-600" />
-            <span>Send Test Trigger</span>
-          </button>
-          
-          <button
-            onClick={() => handleToggleStatus(selectedWorkflow.id)}
-            className={`px-4 py-2 rounded-lg font-bold text-xs transition flex items-center gap-2 ${
-              selectedWorkflow.status === 'Active'
-                ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                : 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-            }`}
-          >
-            {selectedWorkflow.status === 'Active' ? (
-              <>
-                <Pause className="w-4 h-4" />
-                <span>Pause Flow</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span>Start Flow</span>
-              </>
-            )}
-          </button>
-        </div>
+        {selectedWorkflow && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRunTest}
+              className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-sky-700 border border-slate-200 shadow-xs transition flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4 text-sky-600" />
+              <span>Send Test Trigger</span>
+            </button>
+            
+            <button
+              onClick={() => handleToggleStatus(selectedWorkflow.id)}
+              className={`px-4 py-2 rounded-lg font-bold text-xs transition flex items-center gap-2 ${
+                selectedWorkflow.status === 'Active'
+                  ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                  : 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
+              }`}
+            >
+              {selectedWorkflow.status === 'Active' ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  <span>Pause Flow</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  <span>Start Flow</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {testResult && (
@@ -120,127 +121,141 @@ export const AutomationTab: React.FC = () => {
         </div>
       )}
 
-      {/* Workflow Selector Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {workflows.map(wf => (
-          <div
-            key={wf.id}
-            onClick={() => setSelectedWorkflow(wf)}
-            className={`p-4 rounded-xl border cursor-pointer transition ${
-              selectedWorkflow.id === wf.id
-                ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
-                : 'bg-white border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold font-mono text-indigo-700 uppercase">
-                Trigger: {wf.triggerType}
-              </span>
-              <MorphicBadge
-                label={wf.status}
-                variant={wf.status === 'Active' ? 'success' : 'neutral'}
-              />
-            </div>
-            <h3 className="text-sm font-bold text-slate-900">{wf.name}</h3>
-            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{wf.description}</p>
-            <div className="flex justify-between items-center text-[11px] text-slate-600 mt-3 pt-2 border-t border-slate-100 font-medium">
-              <span>{wf.totalEnrolled.toLocaleString()} People Enrolled</span>
-              <span className="text-emerald-700 font-bold">{wf.avgConversionRate}% Completed</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Visual Canvas View */}
-      <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-6">
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-bold text-slate-900">{selectedWorkflow.name}</h3>
-              <MorphicBadge label={selectedWorkflow.status} variant={selectedWorkflow.status === 'Active' ? 'success' : 'neutral'} />
-            </div>
-            <p className="text-xs text-slate-500 mt-1">{selectedWorkflow.description}</p>
-          </div>
-
-          <button
-            onClick={() => setIsAddStepOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Next Step</span>
-          </button>
+      {/* Main Content: Empty State or Workflows List & Canvas */}
+      {workflows.length === 0 ? (
+        <div className="glass-panel p-16 text-center rounded-2xl bg-white border border-slate-200">
+          <Zap className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+          <h3 className="font-bold text-slate-800 text-sm">No automations created yet</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            Build automated email workflows triggered by events like new signups, purchase confirmations, or inactivity alerts.
+          </p>
         </div>
+      ) : (
+        <>
+          {/* Workflow Selector Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {workflows.map(wf => (
+              <div
+                key={wf.id}
+                onClick={() => setSelectedWorkflow(wf)}
+                className={`p-4 rounded-xl border cursor-pointer transition ${
+                  selectedWorkflow?.id === wf.id
+                    ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold font-mono text-indigo-700 uppercase">
+                    Trigger: {wf.triggerType}
+                  </span>
+                  <MorphicBadge
+                    label={wf.status}
+                    variant={wf.status === 'Active' ? 'success' : 'neutral'}
+                  />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">{wf.name}</h3>
+                <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{wf.description}</p>
+                <div className="flex justify-between items-center text-[11px] text-slate-600 mt-3 pt-2 border-t border-slate-100 font-medium">
+                  <span>{wf.totalEnrolled.toLocaleString()} People Enrolled</span>
+                  <span className="text-emerald-700 font-bold">{wf.avgConversionRate}% Completed</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
-        {/* Step Flow Nodes */}
-        <div className="max-w-2xl mx-auto py-2 space-y-3">
-          {selectedWorkflow.steps.map((step, index) => {
-            const isTrigger = step.type === 'trigger';
-            const isEmail = step.type === 'email';
-            const isDelay = step.type === 'delay';
-            const isCondition = step.type === 'condition';
-
-            return (
-              <React.Fragment key={step.id}>
-                <div
-                  className={`p-4 rounded-xl border transition ${
-                    isTrigger
-                      ? 'bg-indigo-50/70 border-indigo-200'
-                      : isEmail
-                      ? 'bg-white border-slate-200 shadow-xs'
-                      : isDelay
-                      ? 'bg-sky-50/50 border-sky-200'
-                      : isCondition
-                      ? 'bg-purple-50/50 border-purple-200'
-                      : 'bg-white border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3.5">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
-                          isTrigger
-                            ? 'bg-indigo-600 text-white'
-                            : isEmail
-                            ? 'bg-emerald-600 text-white'
-                            : isDelay
-                            ? 'bg-sky-600 text-white'
-                            : isCondition
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-slate-200 text-slate-800'
-                        }`}
-                      >
-                        {isTrigger && <Zap className="w-4 h-4" />}
-                        {isEmail && <Send className="w-4 h-4" />}
-                        {isDelay && <Clock className="w-4 h-4" />}
-                        {isCondition && <GitBranch className="w-4 h-4" />}
-                        {step.type === 'tag' && <Tag className="w-4 h-4" />}
-                      </div>
-
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">{step.title}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">{step.subtitle}</div>
-                      </div>
-                    </div>
-
-                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                      Step #{index + 1}
-                    </span>
+          {selectedWorkflow && (
+            <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-6">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-bold text-slate-900">{selectedWorkflow.name}</h3>
+                    <MorphicBadge label={selectedWorkflow.status} variant={selectedWorkflow.status === 'Active' ? 'success' : 'neutral'} />
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">{selectedWorkflow.description}</p>
                 </div>
 
-                {index < selectedWorkflow.steps.length - 1 && (
-                  <div className="flex flex-col items-center justify-center my-0.5">
-                    <div className="w-0.5 h-4 bg-slate-300"></div>
-                    <ArrowDown className="w-3.5 h-3.5 text-slate-400 -mt-1" />
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+                <button
+                  onClick={() => setIsAddStepOpen(true)}
+                  className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Next Step</span>
+                </button>
+              </div>
 
-      </div>
+              {/* Step Flow Nodes */}
+              <div className="max-w-2xl mx-auto py-2 space-y-3">
+                {selectedWorkflow.steps.map((step, index) => {
+                  const isTrigger = step.type === 'trigger';
+                  const isEmail = step.type === 'email';
+                  const isDelay = step.type === 'delay';
+                  const isCondition = step.type === 'condition';
+
+                  return (
+                    <React.Fragment key={step.id}>
+                      <div
+                        className={`p-4 rounded-xl border transition ${
+                          isTrigger
+                            ? 'bg-indigo-50/70 border-indigo-200'
+                            : isEmail
+                            ? 'bg-white border-slate-200 shadow-xs'
+                            : isDelay
+                            ? 'bg-sky-50/50 border-sky-200'
+                            : isCondition
+                            ? 'bg-purple-50/50 border-purple-200'
+                            : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3.5">
+                            <div
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                isTrigger
+                                  ? 'bg-indigo-600 text-white'
+                                  : isEmail
+                                  ? 'bg-emerald-600 text-white'
+                                  : isDelay
+                                  ? 'bg-sky-600 text-white'
+                                  : isCondition
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-slate-200 text-slate-800'
+                              }`}
+                            >
+                              {isTrigger && <Zap className="w-4 h-4" />}
+                              {isEmail && <Send className="w-4 h-4" />}
+                              {isDelay && <Clock className="w-4 h-4" />}
+                              {isCondition && <GitBranch className="w-4 h-4" />}
+                              {step.type === 'tag' && <Tag className="w-4 h-4" />}
+                            </div>
+
+                            <div>
+                              <div className="text-sm font-bold text-slate-900">{step.title}</div>
+                              <div className="text-xs text-slate-500 mt-0.5">{step.subtitle}</div>
+                            </div>
+                          </div>
+
+                          <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            Step #{index + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      {index < selectedWorkflow.steps.length - 1 && (
+                        <div className="flex flex-col items-center justify-center my-0.5">
+                          <div className="w-0.5 h-4 bg-slate-300"></div>
+                          <ArrowDown className="w-3.5 h-3.5 text-slate-400 -mt-1" />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+            </div>
+          )}
+        </>
+      )}
 
       {/* Add Step Modal */}
       {isAddStepOpen && (

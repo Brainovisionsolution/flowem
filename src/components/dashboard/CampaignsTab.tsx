@@ -8,7 +8,8 @@ import {
   Play, 
   ArrowRight, 
   X, 
-  ShieldCheck
+  ShieldCheck,
+  Mail
 } from 'lucide-react';
 import { MorphicCard, MorphicBadge } from '../common/MorphicCard';
 import { Campaign, ContactList, EmailTemplate } from '../../types';
@@ -158,8 +159,17 @@ export const CampaignsTab: React.FC<CampaignsTabProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredCampaigns.map(camp => (
-                <tr key={camp.id} className="hover:bg-slate-50/80 transition">
+              {filteredCampaigns.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <Mail className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                    <p className="font-semibold text-slate-700">No campaigns found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Click "New Campaign" to create, design, and schedule your first bulk email blast.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredCampaigns.map(camp => (
+                  <tr key={camp.id} className="hover:bg-slate-50/80 transition">
                   <td className="py-3.5 px-4">
                     <div className="font-bold text-slate-900">{camp.name}</div>
                     <div className="text-[11px] text-slate-500 font-serif italic">"{camp.subject}"</div>
@@ -225,7 +235,7 @@ export const CampaignsTab: React.FC<CampaignsTabProps> = ({
                     ) : null}
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

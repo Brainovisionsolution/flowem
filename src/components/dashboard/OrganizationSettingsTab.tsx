@@ -243,40 +243,48 @@ export const OrganizationSettingsTab: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {org.apiKeys.map(k => (
-                <div key={k.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900">{k.name}</span>
-                    <button
-                      onClick={() => handleRevokeKey(k.id)}
-                      className="text-slate-400 hover:text-rose-600 p-1"
-                      title="Delete Key"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-mono bg-white p-2 rounded border border-slate-200">
-                    <span className="text-slate-600">{k.prefix}</span>
-                    <button
-                      onClick={() => handleCopyKey(k.id, k.prefix)}
-                      className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1 text-[11px] font-sans font-semibold"
-                    >
-                      {copiedKeyId === k.id ? (
-                        <span className="text-emerald-700">Copied!</span>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
-                    <span>Created: {k.created}</span>
-                    <span>Last used: {k.lastUsed}</span>
-                  </div>
+              {org.apiKeys.length === 0 ? (
+                <div className="p-6 text-center bg-slate-50 rounded-xl border border-slate-200">
+                  <Key className="w-6 h-6 mx-auto text-slate-300 stroke-1 mb-1.5" />
+                  <p className="text-xs font-semibold text-slate-700">No API keys created</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Click "New Key" above to generate credentials for programmatic email delivery.</p>
                 </div>
-              ))}
+              ) : (
+                org.apiKeys.map(k => (
+                  <div key={k.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900">{k.name}</span>
+                      <button
+                        onClick={() => handleRevokeKey(k.id)}
+                        className="text-slate-400 hover:text-rose-600 p-1"
+                        title="Delete Key"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-mono bg-white p-2 rounded border border-slate-200">
+                      <span className="text-slate-600">{k.prefix}</span>
+                      <button
+                        onClick={() => handleCopyKey(k.id, k.prefix)}
+                        className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1 text-[11px] font-sans font-semibold"
+                      >
+                        {copiedKeyId === k.id ? (
+                          <span className="text-emerald-700">Copied!</span>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                      <span>Created: {k.created}</span>
+                      <span>Last used: {k.lastUsed}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

@@ -124,40 +124,48 @@ export const TemplatesTab: React.FC = () => {
 
           {/* Cards List */}
           <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
-            {filteredTemplates.map(tpl => (
-              <div
-                key={tpl.id}
-                onClick={() => setActivePreview(tpl)}
-                className={`p-4 rounded-xl border cursor-pointer transition ${
-                  activePreview?.id === tpl.id
-                    ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-                      {tpl.category}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-900 mt-0.5">{tpl.title}</h3>
-                  </div>
-                  {tpl.isPopular && <MorphicBadge label="Popular" variant="purple" />}
-                </div>
-
-                <div className="text-xs text-slate-600 mt-1.5 font-serif italic">
-                  Subject: "{tpl.subject}"
-                </div>
-
-                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                  {tpl.previewText}
-                </p>
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3 mt-3 border-t border-slate-100">
-                  <span>Updated: {tpl.updatedAt}</span>
-                  <span className="text-indigo-600 font-semibold">Click to preview &rarr;</span>
-                </div>
+            {filteredTemplates.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-xl border border-slate-200">
+                <FileText className="w-8 h-8 mx-auto text-slate-300 stroke-1 mb-2" />
+                <p className="font-semibold text-slate-700 text-xs">No templates found</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Click "New Template" above to compose a reusable email layout.</p>
               </div>
-            ))}
+            ) : (
+              filteredTemplates.map(tpl => (
+                <div
+                  key={tpl.id}
+                  onClick={() => setActivePreview(tpl)}
+                  className={`p-4 rounded-xl border cursor-pointer transition ${
+                    activePreview?.id === tpl.id
+                      ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                        {tpl.category}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-900 mt-0.5">{tpl.title}</h3>
+                    </div>
+                    {tpl.isPopular && <MorphicBadge label="Popular" variant="purple" />}
+                  </div>
+
+                  <div className="text-xs text-slate-600 mt-1.5 font-serif italic">
+                    Subject: "{tpl.subject}"
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                    {tpl.previewText}
+                  </p>
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3 mt-3 border-t border-slate-100">
+                    <span>Updated: {tpl.updatedAt}</span>
+                    <span className="text-indigo-600 font-semibold">Click to preview &rarr;</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
         </div>
@@ -252,8 +260,12 @@ export const TemplatesTab: React.FC = () => {
 
             </div>
           ) : (
-            <div className="glass-panel p-12 text-center text-slate-500 rounded-2xl bg-white">
-              Select a template on the left to preview it.
+            <div className="glass-panel p-16 text-center rounded-2xl bg-white border border-slate-200">
+              <FileText className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+              <h4 className="font-bold text-slate-800 text-sm">No template selected</h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                Select any email template from the list to preview mobile and desktop versions, inspect HTML code, or edit layouts.
+              </p>
             </div>
           )}
         </div>

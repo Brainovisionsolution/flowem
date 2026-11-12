@@ -103,56 +103,66 @@ export const UserManagementTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {members.map(member => (
-                <tr key={member.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-900">{member.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{member.email}</div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="font-semibold text-indigo-700">{member.role}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    {member.twoFactorEnabled ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Enabled</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-amber-700 font-medium">
-                        <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Not Set</span>
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <MorphicBadge
-                      label={member.status}
-                      variant={
-                        member.status === 'Active'
-                          ? 'success'
-                          : member.status === 'Invited'
-                          ? 'info'
-                          : 'error'
-                      }
-                    />
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 font-mono">
-                    {member.lastLogin}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    {member.role !== 'Owner' && (
-                      <button
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
-                        title="Remove Member"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+              {members.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <UserPlus className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                    <p className="font-semibold text-slate-700">No team members invited yet</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Invite teammates with role-based permissions (Admin, Campaign Creator, Analyst, Viewer).</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                members.map(member => (
+                  <tr key={member.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900">{member.name}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">{member.email}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="font-semibold text-indigo-700">{member.role}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      {member.twoFactorEnabled ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700 font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Enabled</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-amber-700 font-medium">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Not Set</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <MorphicBadge
+                        label={member.status}
+                        variant={
+                          member.status === 'Active'
+                            ? 'success'
+                            : member.status === 'Invited'
+                            ? 'info'
+                            : 'error'
+                        }
+                      />
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 font-mono">
+                      {member.lastLogin}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      {member.role !== 'Owner' && (
+                        <button
+                          onClick={() => handleRemoveMember(member.id)}
+                          className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                          title="Remove Member"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

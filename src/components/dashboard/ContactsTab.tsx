@@ -186,79 +186,91 @@ export const ContactsTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredContacts.map(contact => (
-                <tr
-                  key={contact.id}
-                  onClick={() => setSelectedContact(contact)}
-                  className="hover:bg-slate-50/80 transition cursor-pointer"
-                >
-                  <td className="py-3 px-4">
-                    <div className="font-bold text-slate-900">{contact.firstName} {contact.lastName}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">{contact.email}</div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <MorphicBadge
-                      label={contact.status}
-                      variant={
-                        contact.status === 'Subscribed'
-                          ? 'success'
-                          : contact.status === 'Unsubscribed'
-                          ? 'warning'
-                          : contact.status === 'Bounced'
-                          ? 'error'
-                          : 'neutral'
-                      }
-                    />
-                  </td>
-                  <td className="py-3 px-4 text-slate-800">
-                    {contact.lists.join(', ')}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-slate-200 h-2 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            contact.engagementScore > 80
-                              ? 'bg-emerald-600'
-                              : contact.engagementScore > 50
-                              ? 'bg-indigo-600'
-                              : 'bg-amber-500'
-                          }`}
-                          style={{ width: `${contact.engagementScore}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-mono text-xs font-bold text-slate-700">{contact.engagementScore}%</span>
+              {filteredContacts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Users className="w-8 h-8 text-slate-300" />
+                      <div className="text-sm font-bold text-slate-800">No contacts found</div>
+                      <div className="text-xs text-slate-400">Add an individual contact or upload a CSV spreadsheet to start sending.</div>
                     </div>
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-800">
-                    {contact.deliveriesCount}
-                  </td>
-                  <td className="py-3 px-4 font-mono">
-                    <span className="text-emerald-700 font-bold">{contact.opensCount}</span> / <span className="text-sky-700 font-bold">{contact.clicksCount}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-1">
-                      {contact.tags.map((tg, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                          {tg}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteContact(contact.id);
-                      }}
-                      className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
-                      title="Delete Contact"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredContacts.map(contact => (
+                  <tr
+                    key={contact.id}
+                    onClick={() => setSelectedContact(contact)}
+                    className="hover:bg-slate-50/80 transition cursor-pointer"
+                  >
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900">{contact.firstName} {contact.lastName}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">{contact.email}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <MorphicBadge
+                        label={contact.status}
+                        variant={
+                          contact.status === 'Subscribed'
+                            ? 'success'
+                            : contact.status === 'Unsubscribed'
+                            ? 'warning'
+                            : contact.status === 'Bounced'
+                            ? 'error'
+                            : 'neutral'
+                        }
+                      />
+                    </td>
+                    <td className="py-3 px-4 text-slate-800">
+                      {contact.lists.join(', ')}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 bg-slate-200 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              contact.engagementScore > 80
+                                ? 'bg-emerald-600'
+                                : contact.engagementScore > 50
+                                ? 'bg-indigo-600'
+                                : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${contact.engagementScore}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-mono text-xs font-bold text-slate-700">{contact.engagementScore}%</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-800">
+                      {contact.deliveriesCount}
+                    </td>
+                    <td className="py-3 px-4 font-mono">
+                      <span className="text-emerald-700 font-bold">{contact.opensCount}</span> / <span className="text-sky-700 font-bold">{contact.clicksCount}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {contact.tags.map((tg, i) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                            {tg}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteContact(contact.id);
+                        }}
+                        className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                        title="Delete Contact"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

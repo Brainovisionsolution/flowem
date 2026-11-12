@@ -38,6 +38,11 @@ export const ContactListsTab: React.FC = () => {
     l.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalContacts = lists.reduce((sum, l) => sum + (l.contactCount || 0), 0);
+  const avgOpenRate = lists.length > 0 
+    ? (lists.reduce((sum, l) => sum + (l.avgOpenRate || 0), 0) / lists.length).toFixed(1) 
+    : '0.0';
+
   const handleCreateList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName) return;
@@ -108,74 +113,91 @@ export const ContactListsTab: React.FC = () => {
         </div>
 
         <div className="text-xs text-slate-600 flex items-center gap-4 font-medium">
-          <span>Total Contacts Across Lists: <strong className="text-slate-900 font-mono">452,280</strong></span>
+          <span>Total Contacts Across Lists: <strong className="text-slate-900 font-mono">{totalContacts.toLocaleString()}</strong></span>
           <span className="h-4 w-px bg-slate-200"></span>
-          <span>Average Open Rate: <strong className="text-emerald-700 font-mono">41.8%</strong></span>
+          <span>Average Open Rate: <strong className="text-emerald-700 font-mono">{avgOpenRate}%</strong></span>
         </div>
       </div>
 
-      {/* Lists Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredLists.map((list) => (
-          <MorphicCard key={list.id} className="space-y-4 bg-white">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-slate-900">{list.name}</h3>
-                  <MorphicBadge
-                    label={list.type}
-                    variant={list.type === 'Dynamic' ? 'purple' : 'info'}
-                  />
+      {/* Lists Grid or Empty State */}
+      {filteredLists.length === 0 ? (
+        <div className="glass-panel p-12 text-center rounded-2xl bg-white border border-slate-200">
+          <FolderPlus className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+          <h3 className="font-bold text-slate-800 text-sm">No contact lists found</h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            Group your contacts into targeted static or dynamic lists to send personalized bulk emails.
+          </p>
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="mt-4 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition inline-flex items-center gap-2"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>Create Your First List</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredLists.map((list) => (
+            <MorphicCard key={list.id} className="space-y-4 bg-white">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">{list.name}</h3>
+                    <MorphicBadge
+                      label={list.type}
+                      variant={list.type === 'Dynamic' ? 'purple' : 'info'}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                    {list.description}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                  {list.description}
-                </p>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
-              <div>
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">Total Contacts</div>
-                <div className="text-sm font-bold text-slate-900 font-mono mt-0.5">
-                  {list.contactCount.toLocaleString()}
+              <div className="grid grid-cols-3 gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Total Contacts</div>
+                  <div className="text-sm font-bold text-slate-900 font-mono mt-0.5">
+                    {list.contactCount.toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Active Readers</div>
+                  <div className="text-sm font-bold text-emerald-700 font-mono mt-0.5">
+                    {list.activeSubscribers.toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Avg Open Rate</div>
+                  <div className="text-sm font-bold text-sky-700 font-mono mt-0.5">
+                    {list.avgOpenRate}%
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">Active Readers</div>
-                <div className="text-sm font-bold text-emerald-700 font-mono mt-0.5">
-                  {list.activeSubscribers.toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">Avg Open Rate</div>
-                <div className="text-sm font-bold text-sky-700 font-mono mt-0.5">
-                  {list.avgOpenRate}%
-                </div>
-              </div>
-            </div>
 
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {list.tags.map((tg, i) => (
-                <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                  {tg}
-                </span>
-              ))}
-            </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {list.tags.map((tg, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                    {tg}
+                  </span>
+                ))}
+              </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-              <span className="text-[11px] text-slate-400">Updated: {list.updatedAt}</span>
-              <button
-                onClick={() => handleCleanList(list.id)}
-                disabled={isCleaning}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition disabled:opacity-50"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Clean Dead Emails</span>
-              </button>
-            </div>
-          </MorphicCard>
-        ))}
-      </div>
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <span className="text-[11px] text-slate-400">Updated: {list.updatedAt}</span>
+                <button
+                  onClick={() => handleCleanList(list.id)}
+                  disabled={isCleaning}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Clean Dead Emails</span>
+                </button>
+              </div>
+            </MorphicCard>
+          ))}
+        </div>
+      )}
 
       {/* Create List Modal */}
       {isCreateOpen && (

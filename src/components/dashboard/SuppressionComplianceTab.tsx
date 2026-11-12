@@ -176,45 +176,55 @@ export const SuppressionComplianceTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filtered.map(sup => (
-                <tr key={sup.id} className="hover:bg-slate-50 transition">
-                  <td className="py-3 px-4">
-                    <span className="font-mono font-bold text-slate-900">{sup.email}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <MorphicBadge
-                      label={sup.reason}
-                      variant={
-                        sup.reason === 'Hard Bounce'
-                          ? 'error'
-                          : sup.reason === 'Spam Complaint'
-                          ? 'warning'
-                          : sup.reason === 'Unsubscribe Request'
-                          ? 'info'
-                          : 'neutral'
-                      }
-                    />
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">
-                    {sup.sourceCampaign || 'Manually added'}
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 font-mono">
-                    {sup.suppressedAt}
-                  </td>
-                  <td className="py-3 px-4 max-w-xs truncate text-[11px] text-slate-600">
-                    {sup.notes}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => handleRevoke(sup.id)}
-                      title="Unblock Email"
-                      className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                    <p className="font-semibold text-slate-700">No blocked emails</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Your suppression list is clear. Unsubscribes and hard bounces will automatically be guarded here.</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(sup => (
+                  <tr key={sup.id} className="hover:bg-slate-50 transition">
+                    <td className="py-3 px-4">
+                      <span className="font-mono font-bold text-slate-900">{sup.email}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <MorphicBadge
+                        label={sup.reason}
+                        variant={
+                          sup.reason === 'Hard Bounce'
+                            ? 'error'
+                            : sup.reason === 'Spam Complaint'
+                            ? 'warning'
+                            : sup.reason === 'Unsubscribe Request'
+                            ? 'info'
+                            : 'neutral'
+                        }
+                      />
+                    </td>
+                    <td className="py-3 px-4 text-slate-600">
+                      {sup.sourceCampaign || 'Manually added'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-500 font-mono">
+                      {sup.suppressedAt}
+                    </td>
+                    <td className="py-3 px-4 max-w-xs truncate text-[11px] text-slate-600">
+                      {sup.notes}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => handleRevoke(sup.id)}
+                        title="Unblock Email"
+                        className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
