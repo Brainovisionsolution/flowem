@@ -62,7 +62,8 @@ export const templatesController = {
 
   async sendBulk(req, res, next) {
     try {
-      const result = await templatesService.sendBulkWithTemplate(req.body);
+      const templateId = req.params.id || req.body.templateId;
+      const result = await templatesService.sendBulkWithTemplate({ ...req.body, templateId });
       res.json(result);
     } catch (err) {
       next(err);

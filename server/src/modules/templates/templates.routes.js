@@ -5,6 +5,7 @@ export const templatesRouter = Router();
 
 templatesRouter.get('/', templatesController.getAll);
 templatesRouter.post('/send-bulk', templatesController.sendBulk);
+templatesRouter.post('/:id/send', templatesController.sendBulk);
 templatesRouter.get('/:id', templatesController.getById);
 templatesRouter.post('/', templatesController.create);
 templatesRouter.put('/:id', templatesController.update);
