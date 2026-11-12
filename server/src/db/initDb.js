@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { getDbPool, query } from '../config/db.js';
+import { getDbPool, query, ensureDatabaseExists } from '../config/db.js';
 
 export const TABLE_SCHEMAS = [
   `CREATE TABLE IF NOT EXISTS users (
@@ -294,6 +294,7 @@ export const TABLE_SCHEMAS = [
 ];
 
 export async function initializeDatabase() {
+  await ensureDatabaseExists();
   const pool = getDbPool();
 
   try {

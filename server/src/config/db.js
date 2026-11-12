@@ -64,7 +64,8 @@ export async function ensureDatabaseExists() {
     await tempConn.end();
     return true;
   } catch (err) {
-    // If temp connection fails, proceed anyway
+    // If temp connection fails, log notice and return false
+    console.warn('[DB] Notice during ensureDatabaseExists:', err.message);
     return false;
   }
 }
