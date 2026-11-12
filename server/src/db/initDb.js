@@ -1,20 +1,21 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { getDbPool, query } from '../config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function initializeDatabase() {
   const pool = getDbPool();
 
   try {
-    // 1. Read schema.sql and execute
-    const schemaPath = path.resolve(process.cwd(), 'server/src/db/schema.sql');
-    const altSchemaPath = path.resolve(process.cwd(), 'src/db/schema.sql');
-    const finalPath = fs.existsSync(schemaPath) ? schemaPath : (fs.existsSync(altSchemaPath) ? altSchemaPath : null);
-
-    if (finalPath) {
-      const sqlContent = fs.readFileSync(finalPath, 'utf8');
+    // 1. Read schema.sql directly relative to this module
+    const schemaPath = path.resolve(__dirname, 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      const sqlContent = fs.readFileSync(schemaPath, 'utf8');
       const statements = sqlContent
         .split(';')
         .map(s => s.trim())
@@ -152,3 +153,4 @@ export async function initializeDatabase() {
     return false;
   }
 }
+
