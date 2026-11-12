@@ -146,7 +146,7 @@ export interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'Owner' | 'Administrator' | 'Deliverability Engineer' | 'Campaign Manager' | 'Analyst';
+  role: 'Owner' | 'Admin' | 'Administrator' | 'Campaign Creator' | 'Deliverability Engineer' | 'Campaign Manager' | 'Analyst' | 'Viewer';
   twoFactorEnabled: boolean;
   status: 'Active' | 'Invited' | 'Suspended';
   lastLogin: string;

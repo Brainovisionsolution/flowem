@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationTab } from './types';
 import { Navbar } from './components/layout/Navbar';
 import { LandingPage } from './components/home/LandingPage';
 import { AuthModal } from './components/auth/AuthModal';
 import { DashboardLayout } from './components/layout/DashboardLayout';
+import { api } from './services/api';
 
 // Dashboard Views
 import { OverviewTab } from './components/dashboard/OverviewTab';
@@ -22,21 +23,41 @@ export function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard'>('landing');
   const [currentTab, setCurrentTab] = useState<NavigationTab>('overview');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isQuickSendOpen, setIsQuickSendOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string; name: string; role: string } | null>(null);
+
+  // Check existing session on mount
+  useEffect(() => {
+    api.getMe()
+      .then(user => {
+        setCurrentUser(user);
+      })
+      .catch(() => {
+        setCurrentUser(null);
+      });
+  }, []);
 
   const handleOpenLogin = () => {
-    setAuthMode('login');
     setIsAuthOpen(true);
   };
 
-  const handleOpenRegister = () => {
-    setAuthMode('register');
-    setIsAuthOpen(true);
+  const handleEnterDashboard = () => {
+    if (currentUser) {
+      setCurrentView('dashboard');
+    } else {
+      setIsAuthOpen(true);
+    }
   };
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = (user: { id: string; email: string; name: string; role: string }) => {
+    setCurrentUser(user);
     setCurrentView('dashboard');
+  };
+
+  const handleLogout = async () => {
+    await api.logout();
+    setCurrentUser(null);
+    setCurrentView('landing');
   };
 
   const handleQuickSend = () => {
@@ -52,24 +73,27 @@ export function App() {
         <>
           <Navbar
             onOpenLogin={handleOpenLogin}
-            onOpenRegister={handleOpenRegister}
-            onEnterDashboard={() => setCurrentView('dashboard')}
+            onEnterDashboard={handleEnterDashboard}
+            currentUser={currentUser}
+            onLogout={handleLogout}
           />
           <main>
             <LandingPage
               onOpenLogin={handleOpenLogin}
-              onOpenRegister={handleOpenRegister}
-              onEnterDashboard={() => setCurrentView('dashboard')}
+              onOpenRegister={handleOpenLogin}
+              onEnterDashboard={handleEnterDashboard}
             />
           </main>
         </>
       ) : (
-        /* Dashboard Mode */
+        /* Protected Single Admin Dashboard Mode */
         <DashboardLayout
           currentTab={currentTab}
           onSelectTab={(tab) => setCurrentTab(tab)}
           onExitToHome={() => setCurrentView('landing')}
           onOpenQuickSend={handleQuickSend}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         >
           {currentTab === 'overview' && (
             <OverviewTab
@@ -95,10 +119,9 @@ export function App() {
         </DashboardLayout>
       )}
 
-      {/* Global Auth Modal */}
+      {/* Single Admin Auth Modal */}
       <AuthModal
         isOpen={isAuthOpen}
-        initialMode={authMode}
         onClose={() => setIsAuthOpen(false)}
         onSuccess={handleAuthSuccess}
       />
@@ -108,4 +131,3 @@ export function App() {
 }
 
 export default App;
-

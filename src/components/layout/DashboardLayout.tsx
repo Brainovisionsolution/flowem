@@ -27,6 +27,8 @@ interface DashboardLayoutProps {
   onSelectTab: (tab: NavigationTab) => void;
   onExitToHome: () => void;
   onOpenQuickSend: () => void;
+  currentUser?: { id: string; email: string; name: string; role: string } | null;
+  onLogout?: () => void;
   children: React.ReactNode;
 }
 
@@ -35,6 +37,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onSelectTab,
   onExitToHome,
   onOpenQuickSend,
+  currentUser,
+  onLogout,
   children,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -159,11 +163,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {/* User Profile */}
             <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
               <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center font-bold text-xs text-indigo-700">
-                AW
+                {currentUser?.name
+                  ? currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                  : 'SA'}
               </div>
               <div className="hidden md:flex flex-col text-left">
-                <span className="text-xs font-bold text-slate-900 leading-tight">Alexander Wright</span>
-                <span className="text-[10px] text-slate-500 font-medium">Administrator</span>
+                <span className="text-xs font-bold text-slate-900 leading-tight">
+                  {currentUser?.name || 'System Administrator'}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {currentUser?.role ? `${currentUser.role} (Single Admin)` : 'Administrator'}
+                </span>
               </div>
             </div>
 
@@ -227,11 +237,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             </div>
 
             <button
-              onClick={onExitToHome}
+              onClick={onLogout ? onLogout : onExitToHome}
               className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition font-medium"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
+              <span>Log Out Admin</span>
             </button>
           </div>
         </aside>

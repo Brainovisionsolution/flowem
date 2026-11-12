@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Mail, Lock, Building, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, ShieldCheck, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (user: { id: string; email: string; name: string; role: string }) => void;
   initialMode?: 'login' | 'register';
 }
 
@@ -12,30 +13,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  initialMode = 'login',
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
-  const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('••••••••••••');
-  const [company, setCompany] = useState('Acme Inc.');
+  const [email, setEmail] = useState('admin@brainovision.in');
+  const [password, setPassword] = useState('Admin@Flowem2026!');
   const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      const res = await api.login(email, password);
       setSubmitting(false);
-      onSuccess();
+      onSuccess(res.user);
       onClose();
-    }, 400);
+    } catch (err: any) {
+      setSubmitting(false);
+      setErrorMessage(err.message || 'Invalid administrator credentials. Please check your email and password.');
+    }
   };
 
-  const fillDemoAdmin = () => {
-    setEmail('a.wright@flowem-systems.com');
-    setPassword('FlowEM_Pass_2026!');
-    setCompany('FlowEM Systems');
+  const fillDefaultCredentials = () => {
+    setEmail('admin@brainovision.in');
+    setPassword('Admin@Flowem2026!');
+    setErrorMessage(null);
   };
 
   return (
@@ -45,144 +50,98 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 transition p-1 rounded-lg hover:bg-slate-100"
+          title="Close Dialog"
         >
           <X className="w-5 h-5" />
         </button>
 
+        {/* Modal Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">FlowEM Login</h2>
-            <p className="text-xs text-slate-500">Bulk Email & Automation Platform</p>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">Administrator Login</h2>
+            <p className="text-xs text-slate-500">FlowEM Single-Admin Operations Portal</p>
           </div>
         </div>
 
-        {/* Tab switch */}
-        <div className="flex p-1 mb-5 rounded-lg bg-slate-100 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setMode('login')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition ${
-              mode === 'login'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Log In
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('register')}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition ${
-              mode === 'register'
-                ? 'bg-white text-indigo-600 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Sign Up
-          </button>
+        {/* Single Admin Mode Banner */}
+        <div className="mb-5 p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-900 space-y-1">
+          <div className="font-semibold flex items-center justify-between">
+            <span>Single Admin Authentication</span>
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">
+              Phase 2 Active
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 leading-relaxed">
+            Employee registration and invitations are disabled. Platform access is restricted to the primary Administrator account.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'register' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Company Name
-              </label>
-              <div className="relative">
-                <Building className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  required
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="w-full glass-input rounded-lg pl-9 pr-3 py-2 text-xs"
-                  placeholder="Acme Inc."
-                />
-              </div>
-            </div>
-          )}
+        {errorMessage && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+            <span className="leading-relaxed">{errorMessage}</span>
+          </div>
+        )}
 
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Work Email Address
+              Admin Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full glass-input rounded-lg pl-9 pr-3 py-2 text-xs"
-                placeholder="name@company.com"
+                placeholder="admin@brainovision.in"
+                className="w-full glass-input rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 font-sans"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Password
-              </label>
-              {mode === 'login' && (
-                <button
-                  type="button"
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  Forgot password?
-                </button>
-              )}
-            </div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Admin Password
+            </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full glass-input rounded-lg pl-9 pr-3 py-2 text-xs"
-                placeholder="••••••••••••"
+                placeholder="Enter admin password"
+                className="w-full glass-input rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 font-sans"
               />
             </div>
           </div>
 
-          <div className="pt-1">
+          <div className="pt-2">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-sm disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs transition shadow-xs flex items-center justify-center gap-2"
             >
-              {submitting ? (
-                <span>Logging in...</span>
-              ) : (
-                <>
-                  <span>{mode === 'login' ? 'Log In to Dashboard' : 'Create Free Account'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              <span>{submitting ? 'Verifying Credentials...' : 'Sign In as Administrator'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </form>
 
-        {/* Instant Demo */}
-        <div className="mt-5 pt-4 border-t border-slate-200 text-center">
-          <p className="text-xs text-slate-500 mb-2.5">Try the platform instantly with sample data:</p>
+        {/* Quick Credentials Button */}
+        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Testing locally?</span>
           <button
             type="button"
-            onClick={() => {
-              fillDemoAdmin();
-              setTimeout(() => {
-                onSuccess();
-                onClose();
-              }, 200);
-            }}
-            className="w-full py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-800 border border-slate-200 transition font-medium flex items-center justify-center gap-2"
+            onClick={fillDefaultCredentials}
+            className="text-indigo-600 hover:text-indigo-700 font-semibold text-xs"
           >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Instant Demo (Admin Access)</span>
+            Insert Default Credentials
           </button>
         </div>
 

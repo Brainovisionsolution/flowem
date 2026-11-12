@@ -3,18 +3,27 @@ import { env } from '../../config/env.js';
 import { UnauthorizedError, ForbiddenError } from '../../utils/errors.js';
 
 export function authenticate(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next(new UnauthorizedError('Authentication token required'));
+  let token = null;
+
+  // 1. Check HTTP-only cookie first
+  if (req.cookies && req.cookies.flowem_token) {
+    token = req.cookies.flowem_token;
+  }
+  // 2. Fall back to Authorization: Bearer header
+  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return next(new UnauthorizedError('Admin authentication required. Please log in.'));
+  }
+
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);
     req.user = payload;
     next();
   } catch (err) {
-    next(new UnauthorizedError('Invalid or expired authentication session'));
+    return next(new UnauthorizedError('Invalid or expired authentication session. Please log in again.'));
   }
 }
 
@@ -26,3 +35,4 @@ export function authorize(...allowedRoles) {
     next();
   };
 }
+

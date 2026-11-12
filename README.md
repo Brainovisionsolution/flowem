@@ -197,7 +197,22 @@ All in-memory mock fallbacks have been removed from `src/services/api.ts`. Any b
 
 ---
 
-### 6. Sample Data Cleansing (Clean Slate Verification)
+### 6. Single Admin Authentication & Session Security (Phase 2 Completed)
+
+FlowEM is configured as an internal platform operated by a single Administrator account:
+
+- **Single User Account**: One primary Administrator (`admin@brainovision.in` / `Admin@Flowem2026!`).
+- **Registration Disabled**: Public employee signups return HTTP 403 Forbidden.
+- **Teammate Invitations Disabled**: Invitations disabled at the API level for simplicity.
+- **Authentication Mechanism**: JSON Web Token (JWT) signed with `JWT_SECRET`, valid for 7 days.
+- **Session Storage**: Delivered via HTTP-only secure cookie (`flowem_token`) with SameSite protection to prevent XSS credential theft. Also accepts `Authorization: Bearer <token>` for API scripts.
+- **Protected API Endpoints**: All dashboard resources (`/contacts`, `/lists`, `/campaigns`, `/templates`, `/automations`, `/domains`, `/suppressions`, `/organization`, `/team`, `/analytics`) guarded with `authenticate` middleware.
+- **Protected Frontend UI**: Direct access to the operational dashboard requires an active admin session; otherwise users are prompted to log in through the Admin Authentication dialog.
+- **Extensible Schema**: The underlying MySQL 8 `User` and `Role` models remain intact so multi-user RBAC can be activated in later releases without database redesign.
+
+---
+
+### 7. Sample Data Cleansing (Clean Slate Verification)
 
 All sample/mock data has been emptied across both the frontend state and the backend JSON store:
 - `initialContacts`: Empty array (`0 contacts`)

@@ -13,14 +13,36 @@ import {
 
 const BASE_URL = '/api';
 
-// Fetch helper without silent fallback: Backend failures and errors are surfaced directly
+// Token in memory & localStorage for fallback bearer transmission
+let currentToken = typeof window !== 'undefined' ? localStorage.getItem('flowem_auth_token') || '' : '';
+
+export function setAuthToken(token: string | null) {
+  currentToken = token || '';
+  if (typeof window !== 'undefined') {
+    if (token) localStorage.setItem('flowem_auth_token', token);
+    else localStorage.removeItem('flowem_auth_token');
+  }
+}
+
+export function getAuthToken() {
+  return currentToken;
+}
+
+// Fetch helper transmitting both HTTP-only cookies and Authorization headers
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as any || {})
+  };
+
+  if (currentToken) {
+    headers['Authorization'] = `Bearer ${currentToken}`;
+  }
+
   const res = await fetch(`${BASE_URL}${url}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options?.headers || {})
-    }
+    credentials: 'include',
+    headers
   });
 
   if (!res.ok) {
@@ -40,6 +62,29 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Health
   getHealth: () => request<{ status: string; timestamp: string; service: string; database: string }>('/health'),
+
+  // Authentication (Single Admin Portal)
+  login: async (email: string, password: string) => {
+    const res = await request<{ token: string; user: { id: string; email: string; name: string; role: string } }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    if (res.token) {
+      setAuthToken(res.token);
+    }
+    return res;
+  },
+  logout: async () => {
+    try {
+      await request<{ success: boolean; message: string }>('/auth/logout', {
+        method: 'POST'
+      });
+    } finally {
+      setAuthToken(null);
+    }
+    return { success: true };
+  },
+  getMe: () => request<{ id: string; email: string; name: string; role: string; status: string; twoFactorEnabled: boolean }>('/auth/me'),
 
   // Contacts
   getContacts: (search?: string) => request<Contact[]>(search ? `/contacts?search=${encodeURIComponent(search)}` : '/contacts'),
@@ -128,7 +173,7 @@ export const api = {
     body: JSON.stringify({ url })
   }),
 
-  // Team
+  // Team (Single Admin Mode)
   getTeam: () => request<TeamMember[]>('/team'),
   inviteTeamMember: (data: { name: string; email: string; role: string }) => request<TeamMember>('/team', {
     method: 'POST',

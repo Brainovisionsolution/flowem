@@ -639,3 +639,4 @@ model IdempotencyRecord {
 
   @@map("idempotency_records")
 }
+

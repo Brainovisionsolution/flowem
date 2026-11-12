@@ -10,29 +10,35 @@ import { organizationRouter } from '../modules/organization/organization.routes.
 import { usersRouter } from '../modules/users/users.routes.js';
 import { analyticsRouter } from '../modules/analytics/analytics.routes.js';
 import { authRouter } from '../modules/auth/auth.routes.js';
+import { authenticate } from '../modules/auth/auth.middleware.js';
 
 export const apiRouter = Router();
 
-// Health check endpoint
+// Public Health Check Endpoint
 apiRouter.get('/health', (req, res) => {
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
     service: 'FlowEM High-Throughput Engine',
-    database: 'MySQL 8'
+    database: 'MySQL 8',
+    authMode: 'Single Admin'
   });
 });
 
-// Mount module routers matching existing REST contracts
-apiRouter.use('/contacts', contactsRouter);
-apiRouter.use('/lists', listsRouter);
-apiRouter.use('/campaigns', campaignsRouter);
-apiRouter.use('/templates', templatesRouter);
-apiRouter.use('/automations', automationsRouter);
-apiRouter.use('/domains', domainsRouter);
-apiRouter.use('/suppressions', suppressionsRouter);
-apiRouter.use('/organization', organizationRouter);
-apiRouter.use('/team', usersRouter);
-apiRouter.use('/users', usersRouter);
-apiRouter.use('/analytics', analyticsRouter);
+// Authentication Router (Login, Logout, Me)
 apiRouter.use('/auth', authRouter);
+
+// Protected Core Modules (Protected by Single Admin JWT / HTTP-only cookie middleware)
+apiRouter.use('/contacts', authenticate, contactsRouter);
+apiRouter.use('/lists', authenticate, listsRouter);
+apiRouter.use('/campaigns', authenticate, campaignsRouter);
+apiRouter.use('/templates', authenticate, templatesRouter);
+apiRouter.use('/automations', authenticate, automationsRouter);
+apiRouter.use('/domains', authenticate, domainsRouter);
+apiRouter.use('/suppressions', authenticate, suppressionsRouter);
+apiRouter.use('/organization', authenticate, organizationRouter);
+apiRouter.use('/team', authenticate, usersRouter);
+apiRouter.use('/users', authenticate, usersRouter);
+apiRouter.use('/analytics', authenticate, analyticsRouter);
+
+

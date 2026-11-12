@@ -7,3 +7,4 @@ campaignsRouter.get('/', campaignsController.getAll);
 campaignsRouter.post('/', campaignsController.create);
 campaignsRouter.post('/:id/status', campaignsController.updateStatus);
 campaignsRouter.patch('/:id/status', campaignsController.updateStatus);
+

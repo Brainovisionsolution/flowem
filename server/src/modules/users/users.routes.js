@@ -6,3 +6,4 @@ export const usersRouter = Router();
 usersRouter.get('/', usersController.getAll);
 usersRouter.post('/', usersController.invite);
 usersRouter.delete('/:id', usersController.remove);
+

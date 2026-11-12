@@ -3,8 +3,7 @@ import { authService } from './auth.service.js';
 export const authController = {
   async register(req, res, next) {
     try {
-      const result = await authService.register(req.body);
-      res.status(201).json(result);
+      await authService.register(req.body);
     } catch (err) {
       next(err);
     }
@@ -14,7 +13,28 @@ export const authController = {
     try {
       const { email, password } = req.body;
       const result = await authService.login(email, password);
+
+      // Set HTTP-only secure cookie for browser sessions
+      res.cookie('flowem_token', result.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async logout(req, res, next) {
+    try {
+      res.clearCookie('flowem_token', {
+        httpOnly: true,
+        sameSite: 'lax'
+      });
+      res.json({ success: true, message: 'Admin logged out successfully' });
     } catch (err) {
       next(err);
     }

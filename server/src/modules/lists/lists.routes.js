@@ -6,3 +6,4 @@ export const listsRouter = Router();
 listsRouter.get('/', listsController.getAll);
 listsRouter.post('/', listsController.create);
 listsRouter.post('/:id/clean', listsController.clean);
+

@@ -2,79 +2,72 @@ import { prisma } from '../../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env.js';
-import { UnauthorizedError, ConflictError, NotFoundError } from '../../utils/errors.js';
+import { UnauthorizedError, ForbiddenError, NotFoundError } from '../../utils/errors.js';
 
 export const authService = {
-  async register(data) {
-    const existing = await prisma.user.findUnique({
-      where: { email: data.email }
-    });
-
-    if (existing) {
-      throw new ConflictError('A user with this email address already exists');
-    }
-
-    const passwordHash = await bcrypt.hash(data.password, 10);
-
-    // If first user, make Owner; otherwise Viewer or Campaign Creator
-    const userCount = await prisma.user.count();
-    const roleName = userCount === 0 ? 'Owner' : (data.role || 'Campaign Creator');
-
-    let role = await prisma.role.findUnique({
-      where: { name: roleName }
-    });
-
-    if (!role) {
-      role = await prisma.role.create({
-        data: {
-          name: roleName,
-          description: `${roleName} role`
-        }
-      });
-    }
-
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash,
-        name: data.name || data.email.split('@')[0],
-        status: 'Active'
-      }
-    });
-
-    await prisma.userRole.create({
-      data: {
-        userId: user.id,
-        roleId: role.id
-      }
-    });
-
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, role: role.name },
-      env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN }
-    );
-
-    return {
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: role.name
-      }
-    };
+  // Public employee registration is disabled in single-admin mode
+  async register() {
+    throw new ForbiddenError('Public registration is disabled. FlowEM is configured for single-admin operation only.');
   },
 
   async login(email, password) {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    if (!email || !password) {
+      throw new UnauthorizedError('Email and password are required');
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    let user = await prisma.user.findFirst({
+      where: { email: cleanEmail },
       include: {
         roles: {
           include: { role: true }
         }
       }
     });
+
+    // Self-healing bootstrap: if database has zero users, check against env ADMIN credentials
+    if (!user) {
+      const configuredEmail = (process.env.ADMIN_EMAIL || 'admin@brainovision.in').toLowerCase();
+      const configuredPassword = process.env.ADMIN_PASSWORD || 'Admin@Flowem2026!';
+
+      if (cleanEmail === configuredEmail && password === configuredPassword) {
+        // Auto-bootstrap Admin in database
+        const passwordHash = await bcrypt.hash(configuredPassword, 10);
+        let adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } });
+        if (!adminRole) {
+          adminRole = await prisma.role.create({
+            data: { name: 'Admin', description: 'System Administrator', isSystem: true }
+          });
+        }
+
+        user = await prisma.user.create({
+          data: {
+            email: cleanEmail,
+            name: 'System Administrator',
+            passwordHash,
+            status: 'Active',
+            twoFactorEnabled: false
+          },
+          include: {
+            roles: {
+              include: { role: true }
+            }
+          }
+        });
+
+        await prisma.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: adminRole.id
+          }
+        });
+
+        user = await prisma.user.findUnique({
+          where: { id: user.id },
+          include: { roles: { include: { role: true } } }
+        });
+      }
+    }
 
     if (!user) {
       throw new UnauthorizedError('Invalid email or password');
@@ -86,16 +79,16 @@ export const authService = {
     }
 
     if (user.status !== 'Active') {
-      throw new UnauthorizedError('Your account has been deactivated or suspended');
+      throw new UnauthorizedError('Admin account has been deactivated');
     }
 
-    // Update lastLoginAt
+    // Update lastLoginAt timestamp
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() }
     });
 
-    const userRole = user.roles[0]?.role?.name || 'Viewer';
+    const userRole = user.roles[0]?.role?.name || 'Admin';
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: userRole },
@@ -125,14 +118,14 @@ export const authService = {
     });
 
     if (!user) {
-      throw new NotFoundError('User profile not found');
+      throw new NotFoundError('Admin profile not found');
     }
 
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.roles[0]?.role?.name || 'Viewer',
+      role: user.roles[0]?.role?.name || 'Admin',
       status: user.status,
       twoFactorEnabled: user.twoFactorEnabled
     };

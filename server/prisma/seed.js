@@ -62,6 +62,48 @@ async function main() {
   });
   console.log('[FlowEM Seed] Sender domain mail.brainovision.in initialized.');
 
+  // 4. Single Admin User (Phase 2)
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@brainovision.in';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@Flowem2026!';
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+  const adminRole = await prisma.role.findUnique({
+    where: { name: 'Admin' }
+  });
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      passwordHash,
+      name: 'System Administrator',
+      status: 'Active'
+    },
+    create: {
+      email: adminEmail,
+      name: 'System Administrator',
+      passwordHash,
+      status: 'Active',
+      twoFactorEnabled: false
+    }
+  });
+
+  if (adminRole) {
+    await prisma.userRole.upsert({
+      where: {
+        userId_roleId: {
+          userId: adminUser.id,
+          roleId: adminRole.id
+        }
+      },
+      update: {},
+      create: {
+        userId: adminUser.id,
+        roleId: adminRole.id
+      }
+    });
+  }
+  console.log('[FlowEM Seed] Single Admin account configured: ' + adminEmail);
+
   console.log('[FlowEM Seed] Database seeding complete.');
 }
 
@@ -73,3 +115,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

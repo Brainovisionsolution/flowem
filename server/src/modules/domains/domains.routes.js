@@ -6,3 +6,4 @@ export const domainsRouter = Router();
 domainsRouter.get('/', domainsController.getAll);
 domainsRouter.post('/', domainsController.create);
 domainsRouter.post('/:id/verify', domainsController.verify);
+

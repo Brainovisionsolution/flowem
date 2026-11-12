@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db.js';
+import { ForbiddenError } from '../../utils/errors.js';
 
 export const usersService = {
   async getAllUsers() {
@@ -11,64 +12,35 @@ export const usersService = {
       }
     });
 
+    if (users.length === 0) {
+      // Return single admin representation
+      return [{
+        id: 'admin-master',
+        name: 'System Administrator',
+        email: process.env.ADMIN_EMAIL || 'admin@brainovision.in',
+        role: 'Admin',
+        status: 'Active',
+        twoFactorEnabled: false,
+        lastLogin: 'Active Now'
+      }];
+    }
+
     return users.map(u => ({
       id: u.id,
       name: u.name,
       email: u.email,
-      role: u.roles[0]?.role?.name || 'Viewer',
+      role: u.roles[0]?.role?.name || 'Admin',
       status: u.status,
       twoFactorEnabled: u.twoFactorEnabled,
-      lastLogin: u.lastLoginAt ? u.lastLoginAt.toISOString().split('T')[0] : 'Never'
+      lastLogin: u.lastLoginAt ? u.lastLoginAt.toISOString().split('T')[0] : 'Active'
     }));
   },
 
   async inviteUser(data) {
-    // Check if role exists or find it
-    let role = await prisma.role.findFirst({
-      where: { name: data.role || 'Campaign Creator' }
-    });
-
-    if (!role) {
-      role = await prisma.role.create({
-        data: {
-          name: data.role || 'Campaign Creator',
-          description: 'Team campaign creator role'
-        }
-      });
-    }
-
-    const user = await prisma.user.create({
-      data: {
-        name: data.name || data.email.split('@')[0],
-        email: data.email,
-        passwordHash: 'pending_invitation_hash',
-        status: 'Invited',
-        twoFactorEnabled: false
-      }
-    });
-
-    await prisma.userRole.create({
-      data: {
-        userId: user.id,
-        roleId: role.id
-      }
-    });
-
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: role.name,
-      status: 'Invited',
-      twoFactorEnabled: false,
-      lastLogin: 'Never'
-    };
+    throw new ForbiddenError('Teammate invitations are disabled. FlowEM is currently configured for Single Admin access only.');
   },
 
   async removeUser(id) {
-    await prisma.user.delete({
-      where: { id }
-    });
-    return { success: true };
+    throw new ForbiddenError('The primary Administrator account cannot be removed.');
   }
 };
