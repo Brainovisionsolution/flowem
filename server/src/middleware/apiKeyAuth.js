@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { prisma } from '../config/db.js';
+import { query } from '../config/db.js';
 
 export async function authenticateApiKey(req, res, next) {
   let rawKey = req.headers['x-api-key'];
@@ -20,22 +20,19 @@ export async function authenticateApiKey(req, res, next) {
 
   try {
     const keyHash = crypto.createHash('sha256').update(rawKey.trim()).digest('hex');
-    const apiKey = await prisma.apiKey.findUnique({
-      where: { keyHash }
-    });
+    const rows = await query('SELECT * FROM api_keys WHERE key_hash = ? LIMIT 1', [keyHash]);
 
-    if (!apiKey) {
+    if (!rows || rows.length === 0) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Invalid or revoked API key.'
       });
     }
 
+    const apiKey = rows[0];
+
     // Update last used timestamp asynchronously
-    prisma.apiKey.update({
-      where: { id: apiKey.id },
-      data: { lastUsedAt: new Date() }
-    }).catch(() => {});
+    query('UPDATE api_keys SET last_used_at = NOW() WHERE id = ?', [apiKey.id]).catch(() => {});
 
     req.apiKey = apiKey;
     next();

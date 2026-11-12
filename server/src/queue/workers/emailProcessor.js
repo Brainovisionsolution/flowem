@@ -1,4 +1,5 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
+import { query } from '../../config/db.js';
 import { sesClient } from '../../integrations/aws/sesClient.js';
 import { compileEmailHtml } from '../../utils/emailCompiler.js';
 
@@ -8,54 +9,46 @@ import { compileEmailHtml } from '../../utils/emailCompiler.js';
 export async function processEmailRecipient(data) {
   const { campaignId, recipientId, email, firstName, lastName, subject, templateHtml, fromEmail, fromName, replyTo } = data;
 
-  // 1. Pre-send suppression verification
-  const suppression = await prisma.suppression.findUnique({
-    where: { email }
-  });
+  // 1. Pre-send suppression verification in MySQL 8
+  const suppRows = await query('SELECT reason FROM suppressions WHERE email = ? LIMIT 1', [email]);
 
-  if (suppression) {
+  if (suppRows.length > 0) {
+    const reason = suppRows[0].reason;
     if (recipientId) {
-      await prisma.campaignRecipient.update({
-        where: { id: recipientId },
-        data: {
-          status: 'Bounced',
-          errorMessage: `Pre-send suppression rule active: ${suppression.reason}`
-        }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaign_recipients SET status = "Bounced", error_message = ? WHERE id = ?',
+        [`Pre-send suppression rule active: ${reason}`, recipientId]
+      ).catch(() => {});
     }
 
     if (campaignId) {
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: { bouncedCount: { increment: 1 } }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaigns SET bounced_count = bounced_count + 1 WHERE id = ?',
+        [campaignId]
+      ).catch(() => {});
       await checkAndFinalizeCampaign(campaignId);
     }
 
-    return { success: false, suppressed: true, reason: suppression.reason };
+    return { success: false, suppressed: true, reason };
   }
 
-  // 2. Check contact consent & unsubscribed status
-  const contact = await prisma.contact.findUnique({
-    where: { email }
-  });
+  // 2. Check contact consent & unsubscribed status in MySQL 8
+  const contactRows = await query('SELECT id, status FROM contacts WHERE email = ? LIMIT 1', [email]);
+  const contact = contactRows[0];
 
   if (contact && (contact.status === 'Unsubscribed' || contact.status === 'Complained')) {
     if (recipientId) {
-      await prisma.campaignRecipient.update({
-        where: { id: recipientId },
-        data: {
-          status: 'Bounced',
-          errorMessage: `Recipient marked as ${contact.status}`
-        }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaign_recipients SET status = "Bounced", error_message = ? WHERE id = ?',
+        [`Recipient marked as ${contact.status}`, recipientId]
+      ).catch(() => {});
     }
 
     if (campaignId) {
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: { bouncedCount: { increment: 1 } }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaigns SET bounced_count = bounced_count + 1 WHERE id = ?',
+        [campaignId]
+      ).catch(() => {});
       await checkAndFinalizeCampaign(campaignId);
     }
 
@@ -63,9 +56,10 @@ export async function processEmailRecipient(data) {
   }
 
   // 3. Organization & postal compliance details
-  const org = await prisma.organizationSettings.findFirst();
-  const companyName = org?.companyName || 'Brainovision Solutions India Pvt Ltd';
-  const companyAddress = org?.companyAddress || 'Hyderabad, Telangana, India';
+  const orgRows = await query('SELECT * FROM organization_settings LIMIT 1');
+  const org = orgRows[0];
+  const companyName = org?.company_name || 'Brainovision Solutions India Pvt Ltd';
+  const companyAddress = org?.company_address || 'Hyderabad, Telangana, India';
   const baseUrl = process.env.BASE_URL || process.env.APP_URL || 'http://localhost:5000';
   const unsubscribeUrl = `${baseUrl}/api/compliance/unsubscribe?email=${encodeURIComponent(email)}&campaignId=${campaignId || ''}`;
 
@@ -99,44 +93,39 @@ export async function processEmailRecipient(data) {
 
     // 6. Update recipient status in MySQL
     if (recipientId) {
-      await prisma.campaignRecipient.update({
-        where: { id: recipientId },
-        data: {
-          status: 'Sent',
-          sesMessageId: sesResult.messageId,
-          sentAt: new Date()
-        }
-      });
+      await query(
+        'UPDATE campaign_recipients SET status = "Sent", ses_message_id = ?, sent_at = NOW() WHERE id = ?',
+        [sesResult.messageId, recipientId]
+      );
     }
 
     // 7. Record Sent EmailEvent
-    await prisma.emailEvent.create({
-      data: {
-        messageId: sesResult.messageId,
-        campaignId: campaignId || null,
-        contactId: contact?.id || null,
-        eventType: 'Sent',
-        recipientEmail: email,
-        rawPayload: { simulated: sesResult.simulated, region: sesResult.region }
-      }
-    });
+    const eeId = crypto.randomUUID();
+    await query(
+      `INSERT INTO email_events (id, message_id, campaign_id, contact_id, event_type, recipient_email, raw_payload)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        eeId,
+        sesResult.messageId,
+        campaignId || null,
+        contact?.id || null,
+        'Sent',
+        email,
+        JSON.stringify({ simulated: sesResult.simulated, region: sesResult.region })
+      ]
+    );
 
     // 8. Update campaign metrics
     if (campaignId) {
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: {
-          sentCount: { increment: 1 },
-          deliveredCount: { increment: 1 } // SES initial handoff
-        }
-      });
+      await query(
+        'UPDATE campaigns SET sent_count = sent_count + 1, delivered_count = delivered_count + 1 WHERE id = ?',
+        [campaignId]
+      );
       await checkAndFinalizeCampaign(campaignId);
     }
 
-    // 9. Update organization usage and domain quota
-    await prisma.organizationSettings.updateMany({
-      data: { currentUsage: { increment: 1 } }
-    }).catch(() => {});
+    // 9. Update organization usage
+    await query('UPDATE organization_settings SET current_usage = current_usage + 1').catch(() => {});
 
     return {
       success: true,
@@ -147,20 +136,17 @@ export async function processEmailRecipient(data) {
     console.error(`Email transmission failed for ${email}:`, error.message);
 
     if (recipientId) {
-      await prisma.campaignRecipient.update({
-        where: { id: recipientId },
-        data: {
-          status: 'Failed',
-          errorMessage: error.message
-        }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaign_recipients SET status = "Failed", error_message = ? WHERE id = ?',
+        [error.message, recipientId]
+      ).catch(() => {});
     }
 
     if (campaignId) {
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: { bouncedCount: { increment: 1 } }
-      }).catch(() => {});
+      await query(
+        'UPDATE campaigns SET bounced_count = bounced_count + 1 WHERE id = ?',
+        [campaignId]
+      ).catch(() => {});
       await checkAndFinalizeCampaign(campaignId);
     }
 
@@ -173,34 +159,18 @@ export async function processEmailRecipient(data) {
  */
 async function checkAndFinalizeCampaign(campaignId) {
   try {
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: campaignId },
-      include: {
-        _count: {
-          select: {
-            recipients: true
-          }
-        }
-      }
-    });
+    const remainingRows = await query(
+      `SELECT COUNT(*) as remaining FROM campaign_recipients WHERE campaign_id = ? AND status IN ('Pending', 'Queued')`,
+      [campaignId]
+    );
 
-    if (!campaign) return;
-
-    const remaining = await prisma.campaignRecipient.count({
-      where: {
-        campaignId,
-        status: { in: ['Pending', 'Queued'] }
-      }
-    });
+    const remaining = Number(remainingRows[0]?.remaining || 0);
 
     if (remaining === 0) {
-      await prisma.campaign.update({
-        where: { id: campaignId },
-        data: {
-          status: 'Completed',
-          completedAt: new Date()
-        }
-      });
+      await query(
+        `UPDATE campaigns SET status = 'Completed', completed_at = NOW() WHERE id = ?`,
+        [campaignId]
+      );
     }
   } catch (err) {
     console.error(`Failed to evaluate campaign completion for ${campaignId}:`, err.message);

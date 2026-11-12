@@ -1,6 +1,7 @@
-import { prisma } from '../../config/db.js';
+import { query } from '../../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { env } from '../../config/env.js';
 import { UnauthorizedError, ForbiddenError, NotFoundError } from '../../utils/errors.js';
 
@@ -16,14 +17,8 @@ export const authService = {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    let user = await prisma.user.findFirst({
-      where: { email: cleanEmail },
-      include: {
-        roles: {
-          include: { role: true }
-        }
-      }
-    });
+    const rows = await query('SELECT * FROM users WHERE email = ? LIMIT 1', [cleanEmail]);
+    let user = rows[0];
 
     // Self-healing bootstrap: if database has zero users, check against env ADMIN credentials
     if (!user) {
@@ -31,41 +26,16 @@ export const authService = {
       const configuredPassword = process.env.ADMIN_PASSWORD || 'Admin@Flowem2026!';
 
       if (cleanEmail === configuredEmail && password === configuredPassword) {
-        // Auto-bootstrap Admin in database
         const passwordHash = await bcrypt.hash(configuredPassword, 10);
-        let adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } });
-        if (!adminRole) {
-          adminRole = await prisma.role.create({
-            data: { name: 'Admin', description: 'System Administrator', isSystem: true }
-          });
-        }
+        const adminId = crypto.randomUUID();
 
-        user = await prisma.user.create({
-          data: {
-            email: cleanEmail,
-            name: 'System Administrator',
-            passwordHash,
-            status: 'Active',
-            twoFactorEnabled: false
-          },
-          include: {
-            roles: {
-              include: { role: true }
-            }
-          }
-        });
+        await query(
+          `INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)`,
+          [adminId, cleanEmail, passwordHash, 'System Administrator', 'Admin', 'Active']
+        );
 
-        await prisma.userRole.create({
-          data: {
-            userId: user.id,
-            roleId: adminRole.id
-          }
-        });
-
-        user = await prisma.user.findUnique({
-          where: { id: user.id },
-          include: { roles: { include: { role: true } } }
-        });
+        const newRows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [adminId]);
+        user = newRows[0];
       }
     }
 
@@ -73,7 +43,7 @@ export const authService = {
       throw new UnauthorizedError('Invalid email or password');
     }
 
-    const isValid = await bcrypt.compare(password, user.passwordHash);
+    const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       throw new UnauthorizedError('Invalid email or password');
     }
@@ -82,13 +52,10 @@ export const authService = {
       throw new UnauthorizedError('Admin account has been deactivated');
     }
 
-    // Update lastLoginAt timestamp
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() }
-    });
+    // Update updated_at timestamp
+    query('UPDATE users SET updated_at = NOW() WHERE id = ?', [user.id]).catch(() => {});
 
-    const userRole = user.roles[0]?.role?.name || 'Admin';
+    const userRole = user.role || 'Admin';
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: userRole },
@@ -108,14 +75,8 @@ export const authService = {
   },
 
   async getMe(userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        roles: {
-          include: { role: true }
-        }
-      }
-    });
+    const rows = await query('SELECT id, email, name, role, status FROM users WHERE id = ? LIMIT 1', [userId]);
+    const user = rows[0];
 
     if (!user) {
       throw new NotFoundError('Admin profile not found');
@@ -125,9 +86,9 @@ export const authService = {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.roles[0]?.role?.name || 'Admin',
+      role: user.role || 'Admin',
       status: user.status,
-      twoFactorEnabled: user.twoFactorEnabled
+      twoFactorEnabled: false
     };
   }
 };

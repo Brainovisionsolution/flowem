@@ -11,3 +11,4 @@ v1Router.post('/emails/send', v1Controller.sendEmail);
 v1Router.post('/contacts', v1Controller.createContact);
 v1Router.get('/contacts', v1Controller.getContacts);
 v1Router.post('/campaigns/:id/send', v1Controller.triggerCampaign);
+

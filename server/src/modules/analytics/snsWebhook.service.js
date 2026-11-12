@@ -1,5 +1,6 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
 import https from 'https';
+import { query } from '../../config/db.js';
 
 export const snsWebhookService = {
   /**
@@ -36,7 +37,6 @@ export const snsWebhookService = {
       const mail = messagePayload.mail || {};
       const messageId = mail.messageId || 'unknown';
 
-      // Correlate with campaign if headers or tags contain campaign ID
       let campaignId = null;
       let recipientId = null;
 
@@ -56,45 +56,27 @@ export const snsWebhookService = {
           const email = recipient.emailAddress?.toLowerCase();
           if (!email) continue;
 
-          // If hard/permanent bounce, add to suppression list
           if (bounceType === 'Permanent') {
-            await prisma.suppression.upsert({
-              where: { email },
-              create: {
-                email,
-                reason: 'Hard Bounce',
-                sourceCampaign: campaignId || 'AWS SNS Webhook',
-                notes: recipient.diagnosticCode || 'Permanent delivery failure reported by SES'
-              },
-              update: {
-                reason: 'Hard Bounce',
-                notes: recipient.diagnosticCode || 'Permanent delivery failure updated by SES'
-              }
-            }).catch(() => {});
+            const suppId = crypto.randomUUID();
+            await query(
+              `INSERT INTO suppressions (id, email, reason, source_campaign, notes)
+               VALUES (?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE reason = 'Hard Bounce', notes = VALUES(notes), suppressed_at = NOW()`,
+              [suppId, email, 'Hard Bounce', campaignId || 'AWS SNS Webhook', recipient.diagnosticCode || 'Permanent delivery failure reported by SES']
+            ).catch(() => {});
 
-            // Update contact status
-            await prisma.contact.updateMany({
-              where: { email },
-              data: { status: 'Bounced' }
-            }).catch(() => {});
+            await query('UPDATE contacts SET status = "Bounced" WHERE email = ?', [email]).catch(() => {});
           }
 
-          // Record email event
-          await prisma.emailEvent.create({
-            data: {
-              messageId,
-              campaignId,
-              eventType: 'Bounce',
-              recipientEmail: email,
-              rawPayload: messagePayload
-            }
-          }).catch(() => {});
+          const eeId = crypto.randomUUID();
+          await query(
+            `INSERT INTO email_events (id, message_id, campaign_id, event_type, recipient_email, raw_payload)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [eeId, messageId, campaignId, 'Bounce', email, JSON.stringify(messagePayload)]
+          ).catch(() => {});
 
           if (campaignId) {
-            await prisma.campaign.update({
-              where: { id: campaignId },
-              data: { bouncedCount: { increment: 1 } }
-            }).catch(() => {});
+            await query('UPDATE campaigns SET bounced_count = bounced_count + 1 WHERE id = ?', [campaignId]).catch(() => {});
           }
         }
       } else if (eventType === 'Complaint') {
@@ -105,40 +87,25 @@ export const snsWebhookService = {
           const email = recipient.emailAddress?.toLowerCase();
           if (!email) continue;
 
-          // Automatic suppression on spam complaint
-          await prisma.suppression.upsert({
-            where: { email },
-            create: {
-              email,
-              reason: 'Spam Complaint',
-              sourceCampaign: campaignId || 'AWS SNS Webhook',
-              notes: 'Spam complaint recorded via AWS SES'
-            },
-            update: {
-              reason: 'Spam Complaint'
-            }
-          }).catch(() => {});
+          const suppId = crypto.randomUUID();
+          await query(
+            `INSERT INTO suppressions (id, email, reason, source_campaign, notes)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE reason = 'Spam Complaint', suppressed_at = NOW()`,
+            [suppId, email, 'Spam Complaint', campaignId || 'AWS SNS Webhook', 'Spam complaint recorded via AWS SES']
+          ).catch(() => {});
 
-          await prisma.contact.updateMany({
-            where: { email },
-            data: { status: 'Complained' }
-          }).catch(() => {});
+          await query('UPDATE contacts SET status = "Complained" WHERE email = ?', [email]).catch(() => {});
 
-          await prisma.emailEvent.create({
-            data: {
-              messageId,
-              campaignId,
-              eventType: 'Complaint',
-              recipientEmail: email,
-              rawPayload: messagePayload
-            }
-          }).catch(() => {});
+          const eeId = crypto.randomUUID();
+          await query(
+            `INSERT INTO email_events (id, message_id, campaign_id, event_type, recipient_email, raw_payload)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [eeId, messageId, campaignId, 'Complaint', email, JSON.stringify(messagePayload)]
+          ).catch(() => {});
 
           if (campaignId) {
-            await prisma.campaign.update({
-              where: { id: campaignId },
-              data: { complainedCount: { increment: 1 } }
-            }).catch(() => {});
+            await query('UPDATE campaigns SET complained_count = complained_count + 1 WHERE id = ?', [campaignId]).catch(() => {});
           }
         }
       } else if (eventType === 'Delivery') {
@@ -146,39 +113,27 @@ export const snsWebhookService = {
         const recipients = delivery.recipients || [];
 
         for (const email of recipients) {
-          await prisma.emailEvent.create({
-            data: {
-              messageId,
-              campaignId,
-              eventType: 'Delivered',
-              recipientEmail: email,
-              rawPayload: messagePayload
-            }
-          }).catch(() => {});
+          const eeId = crypto.randomUUID();
+          await query(
+            `INSERT INTO email_events (id, message_id, campaign_id, event_type, recipient_email, raw_payload)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [eeId, messageId, campaignId, 'Delivered', email, JSON.stringify(messagePayload)]
+          ).catch(() => {});
 
           if (recipientId) {
-            await prisma.campaignRecipient.update({
-              where: { id: recipientId },
-              data: {
-                status: 'Delivered',
-                deliveredAt: new Date()
-              }
-            }).catch(() => {});
+            await query(
+              'UPDATE campaign_recipients SET status = "Delivered", delivered_at = NOW() WHERE id = ?',
+              [recipientId]
+            ).catch(() => {});
           }
         }
       } else if (eventType === 'Open') {
         if (campaignId) {
-          await prisma.campaign.update({
-            where: { id: campaignId },
-            data: { openedCount: { increment: 1 } }
-          }).catch(() => {});
+          await query('UPDATE campaigns SET opened_count = opened_count + 1 WHERE id = ?', [campaignId]).catch(() => {});
         }
       } else if (eventType === 'Click') {
         if (campaignId) {
-          await prisma.campaign.update({
-            where: { id: campaignId },
-            data: { clickedCount: { increment: 1 } }
-          }).catch(() => {});
+          await query('UPDATE campaigns SET clicked_count = clicked_count + 1 WHERE id = ?', [campaignId]).catch(() => {});
         }
       }
 

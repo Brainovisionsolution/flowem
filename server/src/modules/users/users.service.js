@@ -1,19 +1,11 @@
-import { prisma } from '../../config/db.js';
+import { query } from '../../config/db.js';
 import { ForbiddenError } from '../../utils/errors.js';
 
 export const usersService = {
   async getAllUsers() {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        roles: {
-          include: { role: true }
-        }
-      }
-    });
+    const users = await query('SELECT * FROM users ORDER BY created_at DESC');
 
     if (users.length === 0) {
-      // Return single admin representation
       return [{
         id: 'admin-master',
         name: 'System Administrator',
@@ -29,10 +21,10 @@ export const usersService = {
       id: u.id,
       name: u.name,
       email: u.email,
-      role: u.roles[0]?.role?.name || 'Admin',
+      role: u.role || 'Admin',
       status: u.status,
-      twoFactorEnabled: u.twoFactorEnabled,
-      lastLogin: u.lastLoginAt ? u.lastLoginAt.toISOString().split('T')[0] : 'Active'
+      twoFactorEnabled: false,
+      lastLogin: u.updated_at ? new Date(u.updated_at).toISOString().split('T')[0] : 'Active'
     }));
   },
 

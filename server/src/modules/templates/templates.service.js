@@ -1,116 +1,121 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
+import { query } from '../../config/db.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { compileEmailHtml } from '../../utils/emailCompiler.js';
 import { sesClient } from '../../integrations/aws/sesClient.js';
 
 export const templatesService = {
   async getAllTemplates() {
-    const templates = await prisma.template.findMany({
-      orderBy: { updatedAt: 'desc' }
-    });
+    const templates = await query('SELECT * FROM templates ORDER BY updated_at DESC');
 
     return templates.map(t => ({
       id: t.id,
       title: t.name,
       category: t.category,
       subject: t.subject,
-      previewText: t.previewText || '',
-      htmlContent: t.htmlContent,
-      updatedAt: t.updatedAt.toISOString().split('T')[0],
-      isPopular: t.isPopular
+      previewText: t.preview_text || '',
+      htmlContent: t.html_content,
+      updatedAt: t.updated_at ? new Date(t.updated_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      isPopular: Boolean(t.is_popular)
     }));
   },
 
   async getTemplateById(id) {
-    const template = await prisma.template.findUnique({ where: { id } });
-    if (!template) throw new NotFoundError('Template not found');
-    return template;
+    const rows = await query('SELECT * FROM templates WHERE id = ? LIMIT 1', [id]);
+    if (rows.length === 0) throw new NotFoundError('Template not found');
+    const t = rows[0];
+    return {
+      id: t.id,
+      title: t.name,
+      category: t.category,
+      subject: t.subject,
+      previewText: t.preview_text || '',
+      htmlContent: t.html_content,
+      isPopular: Boolean(t.is_popular)
+    };
   },
 
   async createTemplate(data) {
-    const template = await prisma.template.create({
-      data: {
-        name: data.title || data.name || 'Untitled Template',
-        subject: data.subject || 'FlowEM Announcement',
-        previewText: data.previewText || '',
-        category: data.category || 'Newsletter',
-        htmlContent: data.htmlContent || '<p>Hello {{firstName}},</p>',
-        editorJson: data.editorJson || null,
-        isPopular: data.isPopular || false
-      }
-    });
+    const id = crypto.randomUUID();
+    const name = data.title || data.name || 'Untitled Template';
+    const subject = data.subject || 'FlowEM Announcement';
+    const previewText = data.previewText || '';
+    const category = data.category || 'Newsletter';
+    const htmlContent = data.htmlContent || '<p>Hello {{firstName}},</p>';
+    const isPopular = data.isPopular ? 1 : 0;
 
-    // Record version 1
-    await prisma.templateVersion.create({
-      data: {
-        templateId: template.id,
-        versionNumber: 1,
-        htmlContent: template.htmlContent,
-        editorJson: template.editorJson || null
-      }
-    }).catch(() => {});
+    await query(
+      `INSERT INTO templates (id, name, subject, preview_text, category, html_content, is_popular)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, name, subject, previewText, category, htmlContent, isPopular]
+    );
+
+    const vId = crypto.randomUUID();
+    await query(
+      `INSERT INTO template_versions (id, template_id, version_number, html_content) VALUES (?, ?, ?, ?)`,
+      [vId, id, 1, htmlContent]
+    ).catch(() => {});
 
     return {
-      id: template.id,
-      title: template.name,
-      category: template.category,
-      subject: template.subject,
-      previewText: template.previewText || '',
-      htmlContent: template.htmlContent,
-      updatedAt: template.updatedAt.toISOString().split('T')[0],
-      isPopular: template.isPopular
+      id,
+      title: name,
+      category,
+      subject,
+      previewText,
+      htmlContent,
+      updatedAt: new Date().toISOString().split('T')[0],
+      isPopular: Boolean(isPopular)
     };
   },
 
   async updateTemplate(id, data) {
-    const existing = await prisma.template.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundError('Template not found');
+    const rows = await query('SELECT * FROM templates WHERE id = ? LIMIT 1', [id]);
+    if (rows.length === 0) throw new NotFoundError('Template not found');
+    const existing = rows[0];
 
-    const updated = await prisma.template.update({
-      where: { id },
-      data: {
-        name: data.title || data.name || existing.name,
-        subject: data.subject || existing.subject,
-        previewText: data.previewText !== undefined ? data.previewText : existing.previewText,
-        category: data.category || existing.category,
-        htmlContent: data.htmlContent || existing.htmlContent,
-        editorJson: data.editorJson || existing.editorJson
-      }
-    });
+    const name = data.title || data.name || existing.name;
+    const subject = data.subject || existing.subject;
+    const previewText = data.previewText !== undefined ? data.previewText : existing.preview_text;
+    const category = data.category || existing.category;
+    const htmlContent = data.htmlContent || existing.html_content;
 
-    // Count versions to increment
-    const versionCount = await prisma.templateVersion.count({ where: { templateId: id } });
-    await prisma.templateVersion.create({
-      data: {
-        templateId: id,
-        versionNumber: versionCount + 1,
-        htmlContent: updated.htmlContent,
-        editorJson: updated.editorJson || null
-      }
-    }).catch(() => {});
+    await query(
+      `UPDATE templates SET name = ?, subject = ?, preview_text = ?, category = ?, html_content = ?, updated_at = NOW() WHERE id = ?`,
+      [name, subject, previewText, category, htmlContent, id]
+    );
+
+    const vCountRows = await query('SELECT COUNT(*) as cnt FROM template_versions WHERE template_id = ?', [id]);
+    const nextVer = (vCountRows[0]?.cnt || 0) + 1;
+    const vId = crypto.randomUUID();
+
+    await query(
+      `INSERT INTO template_versions (id, template_id, version_number, html_content) VALUES (?, ?, ?, ?)`,
+      [vId, id, nextVer, htmlContent]
+    ).catch(() => {});
 
     return {
-      id: updated.id,
-      title: updated.name,
-      category: updated.category,
-      subject: updated.subject,
-      previewText: updated.previewText || '',
-      htmlContent: updated.htmlContent,
-      updatedAt: updated.updatedAt.toISOString().split('T')[0],
-      isPopular: updated.isPopular
+      id,
+      title: name,
+      category,
+      subject,
+      previewText,
+      htmlContent,
+      updatedAt: new Date().toISOString().split('T')[0],
+      isPopular: Boolean(existing.is_popular)
     };
   },
 
   async sendTestEmail(id, targetEmail) {
     const template = await this.getTemplateById(id);
-    const org = await prisma.organizationSettings.findFirst();
+    const orgRows = await query('SELECT * FROM organization_settings LIMIT 1');
+    const org = orgRows[0];
 
     const compiled = compileEmailHtml(template.htmlContent, {
       firstName: 'Admin',
       lastName: 'Tester',
       email: targetEmail,
-      companyName: org?.companyName || 'Brainovision Solutions India Pvt Ltd',
-      companyAddress: org?.companyAddress || 'Hyderabad, Telangana, India',
+      companyName: org?.company_name || 'Brainovision Solutions India Pvt Ltd',
+      companyAddress: org?.company_address || 'Hyderabad, Telangana, India',
       unsubscribeUrl: 'https://mail.brainovision.in/unsubscribe?test=true'
     });
 

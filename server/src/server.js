@@ -1,17 +1,21 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
-import { prisma, checkDatabaseConnection } from './config/db.js';
+import { checkDatabaseConnection, getDbPool } from './config/db.js';
+import { initializeDatabase } from './db/initDb.js';
 
 const app = createApp();
 
 async function bootstrap() {
-  logger.info('Initializing FlowEM High-Throughput Bulk Email Platform...');
+  logger.info('Initializing FlowEM High-Throughput Bulk Email Platform (Pure MySQL 8)...');
   logger.info(`Environment: ${env.NODE_ENV}`);
 
-  // Test MySQL 8 database connectivity
+  // Test MySQL 8 database connectivity & run auto-initialization
   const isDbConnected = await checkDatabaseConnection();
-  if (!isDbConnected) {
+  if (isDbConnected) {
+    logger.info('MySQL 8 connection established successfully.');
+    await initializeDatabase();
+  } else {
     logger.warn('MySQL 8 connection could not be established immediately. Verify DATABASE_URL in server/.env.');
   }
 
@@ -25,8 +29,11 @@ async function bootstrap() {
     logger.info(`Received ${signal}. Shutting down FlowEM gracefully...`);
     server.close(async () => {
       logger.info('HTTP server closed');
-      await prisma.$disconnect();
-      logger.info('Database connections disconnected');
+      try {
+        const pool = getDbPool();
+        await pool.end();
+      } catch (_) {}
+      logger.info('MySQL 8 connection pool closed');
       process.exit(0);
     });
 

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
-import { prisma } from '../config/db.js';
+import { query } from '../config/db.js';
 
 export const webhookDispatcher = {
   /**
@@ -9,16 +9,14 @@ export const webhookDispatcher = {
    */
   async dispatchEvent(eventType, payload) {
     try {
-      const org = await prisma.organizationSettings.findFirst();
+      const orgRows = await query('SELECT webhook_url FROM organization_settings LIMIT 1');
       const urlsToNotify = [];
 
-      if (org?.webhookUrl) {
-        urlsToNotify.push({ url: org.webhookUrl, secret: 'flowem_secret' });
+      if (orgRows[0]?.webhook_url) {
+        urlsToNotify.push({ url: orgRows[0].webhook_url, secret: 'flowem_secret' });
       }
 
-      const registeredWebhooks = await prisma.webhook.findMany({
-        where: { isActive: true }
-      });
+      const registeredWebhooks = await query('SELECT * FROM webhooks WHERE is_active = 1');
 
       for (const wh of registeredWebhooks) {
         urlsToNotify.push({ url: wh.url, secret: wh.secret, webhookId: wh.id });
@@ -70,15 +68,12 @@ export const webhookDispatcher = {
         res.on('data', chunk => { responseBody += chunk; });
         res.on('end', async () => {
           if (webhookId) {
-            await prisma.webhookDelivery.create({
-              data: {
-                webhookId,
-                eventType,
-                payloadJson: JSON.parse(bodyString),
-                responseStatus: res.statusCode,
-                responseBody: responseBody.substring(0, 1000)
-              }
-            }).catch(() => {});
+            const deliveryId = crypto.randomUUID();
+            await query(
+              `INSERT INTO webhook_deliveries (id, webhook_id, event_type, payload_json, response_status, response_body)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [deliveryId, webhookId, eventType, bodyString, res.statusCode, responseBody.substring(0, 1000)]
+            ).catch(() => {});
           }
         });
       });

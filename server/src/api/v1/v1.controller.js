@@ -1,7 +1,7 @@
 import { contactsService } from '../../modules/contacts/contacts.service.js';
 import { campaignsService } from '../../modules/campaigns/campaigns.service.js';
 import { emailProducer } from '../../queue/producers/emailProducer.js';
-import { prisma } from '../../config/db.js';
+import { query } from '../../config/db.js';
 import { BadRequestError, NotFoundError } from '../../utils/errors.js';
 
 export const v1Controller = {
@@ -23,8 +23,8 @@ export const v1Controller = {
 
       let emailHtml = html;
       if (!emailHtml && templateId) {
-        const template = await prisma.template.findUnique({ where: { id: templateId } });
-        if (template) emailHtml = template.htmlContent;
+        const tplRows = await query('SELECT html_content FROM templates WHERE id = ? LIMIT 1', [templateId]);
+        if (tplRows[0]?.html_content) emailHtml = tplRows[0].html_content;
       }
 
       if (!emailHtml) {
@@ -107,3 +107,4 @@ export const v1Controller = {
     }
   }
 };
+

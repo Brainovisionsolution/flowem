@@ -12,20 +12,19 @@ export function errorHandler(err, req, res, next) {
     });
   }
 
-  // Prisma unique constraint violation
-  if (err.code === 'P2002') {
-    const target = err.meta?.target ? `Duplicate field: ${err.meta.target}` : 'Resource already exists';
+  // MySQL unique constraint violation (ER_DUP_ENTRY)
+  if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
     return res.status(409).json({
       success: false,
-      error: target
+      error: 'A record with this identifier already exists in MySQL 8.'
     });
   }
 
-  // Prisma record not found
-  if (err.code === 'P2025') {
-    return res.status(404).json({
+  // MySQL foreign key violation
+  if (err.code === 'ER_NO_REFERENCED_ROW_2' || err.errno === 1452) {
+    return res.status(400).json({
       success: false,
-      error: 'Requested record not found in database'
+      error: 'Referenced foreign record does not exist in MySQL 8.'
     });
   }
 

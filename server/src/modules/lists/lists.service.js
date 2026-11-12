@@ -1,95 +1,81 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
+import { query } from '../../config/db.js';
 
 export const listsService = {
   async getAllLists() {
-    const lists = await prisma.contactList.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { members: true }
-        }
-      }
-    });
+    const lists = await query(`
+      SELECT cl.*, COUNT(clm.contact_id) as member_count
+      FROM contact_lists cl
+      LEFT JOIN contact_list_members clm ON cl.id = clm.list_id
+      GROUP BY cl.id
+      ORDER BY cl.created_at DESC
+    `);
 
     return lists.map(l => ({
       id: l.id,
       name: l.name,
       description: l.description || '',
-      contactCount: l._count.members,
+      contactCount: Number(l.member_count) || 0,
       type: l.type,
-      activeSubscribers: l._count.members,
+      activeSubscribers: Number(l.member_count) || 0,
       avgOpenRate: 0,
-      createdAt: l.createdAt.toISOString().split('T')[0],
+      createdAt: l.created_at ? new Date(l.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       updatedAt: 'Recently',
       tags: ['Audience']
     }));
   },
 
   async createList(data) {
-    const list = await prisma.contactList.create({
-      data: {
-        name: data.name,
-        description: data.description || '',
-        type: data.type || 'Static',
-        rulesJson: data.tags ? { tags: data.tags } : null
-      }
-    });
+    const listId = crypto.randomUUID();
+    await query(
+      `INSERT INTO contact_lists (id, name, description, type) VALUES (?, ?, ?, ?)`,
+      [listId, data.name, data.description || '', data.type || 'Static']
+    );
 
     return {
-      id: list.id,
-      name: list.name,
-      description: list.description || '',
+      id: listId,
+      name: data.name,
+      description: data.description || '',
       contactCount: 0,
-      type: list.type,
+      type: data.type || 'Static',
       activeSubscribers: 0,
       avgOpenRate: 0,
-      createdAt: list.createdAt.toISOString().split('T')[0],
+      createdAt: new Date().toISOString().split('T')[0],
       updatedAt: 'Just now',
       tags: data.tags || ['Audience']
     };
   },
 
   async cleanList(id) {
-    // Find suppressed or bounced contacts and remove them from list membership
-    const suppressions = await prisma.suppression.findMany({
-      select: { email: true }
-    });
-    const suppressedEmails = suppressions.map(s => s.email);
+    // Remove suppressed or bounced contacts from this list in MySQL
+    const deleteRes = await query(`
+      DELETE clm FROM contact_list_members clm
+      INNER JOIN contacts c ON clm.contact_id = c.id
+      INNER JOIN suppressions s ON c.email = s.email
+      WHERE clm.list_id = ?
+    `, [id]);
 
-    let removed = 0;
-    if (suppressedEmails.length > 0) {
-      const result = await prisma.contactListMember.deleteMany({
-        where: {
-          listId: id,
-          contact: {
-            email: { in: suppressedEmails }
-          }
-        }
-      });
-      removed = result.count;
-    }
+    const countRows = await query('SELECT COUNT(*) as member_count FROM contact_list_members WHERE list_id = ?', [id]);
+    const memberCount = countRows[0]?.member_count || 0;
 
-    const list = await prisma.contactList.findUnique({
-      where: { id },
-      include: { _count: { select: { members: true } } }
-    });
+    const listRows = await query('SELECT * FROM contact_lists WHERE id = ? LIMIT 1', [id]);
+    const list = listRows[0];
 
     return {
       success: true,
-      removed,
+      removed: deleteRes.affectedRows || 0,
       list: list ? {
         id: list.id,
         name: list.name,
         description: list.description || '',
-        contactCount: list._count.members,
+        contactCount: Number(memberCount),
         type: list.type,
-        activeSubscribers: list._count.members,
+        activeSubscribers: Number(memberCount),
         avgOpenRate: 0,
-        createdAt: list.createdAt.toISOString().split('T')[0],
+        createdAt: new Date(list.created_at).toISOString().split('T')[0],
         updatedAt: 'Just now',
         tags: ['Audience']
       } : null
     };
   }
 };
-

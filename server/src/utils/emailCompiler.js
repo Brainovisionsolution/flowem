@@ -64,3 +64,4 @@ export function compileEmailHtml(templateHtml, variables = {}) {
 
   return compiled;
 }
+

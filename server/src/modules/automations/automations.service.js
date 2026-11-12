@@ -1,78 +1,76 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
+import { query } from '../../config/db.js';
 import { automationEngine } from './automationEngine.js';
 
 export const automationsService = {
   async getAllAutomations() {
-    const automations = await prisma.automation.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        steps: {
-          orderBy: { stepOrder: 'asc' }
-        }
-      }
-    });
+    const automations = await query('SELECT * FROM automations ORDER BY created_at DESC');
 
-    return automations.map(a => ({
-      id: a.id,
-      name: a.name,
-      description: a.description || '',
-      status: a.status,
-      triggerType: a.triggerType,
-      totalEnrolled: a.totalEnrolled,
-      avgConversionRate: a.totalEnrolled > 0 ? Number(((a.completedCount / a.totalEnrolled) * 100).toFixed(1)) : 0,
-      steps: a.steps.map(s => ({
-        id: s.id,
-        type: s.type,
-        title: s.title,
-        subtitle: s.subtitle || ''
-      }))
-    }));
+    const result = [];
+    for (const a of automations) {
+      const steps = await query(
+        'SELECT * FROM automation_steps WHERE automation_id = ? ORDER BY step_order ASC',
+        [a.id]
+      );
+
+      result.push({
+        id: a.id,
+        name: a.name,
+        description: a.description || '',
+        status: a.status,
+        triggerType: a.trigger_type,
+        totalEnrolled: a.total_enrolled,
+        avgConversionRate: a.total_enrolled > 0 ? Number(((a.completed_count / a.total_enrolled) * 100).toFixed(1)) : 0,
+        steps: steps.map(s => ({
+          id: s.id,
+          type: s.type,
+          title: s.title,
+          subtitle: s.subtitle || ''
+        }))
+      });
+    }
+
+    return result;
   },
 
   async toggleStatus(id) {
-    const current = await prisma.automation.findUnique({
-      where: { id }
-    });
-
-    if (!current) {
+    const rows = await query('SELECT * FROM automations WHERE id = ? LIMIT 1', [id]);
+    if (rows.length === 0) {
       throw new Error('Automation workflow not found');
     }
+    const current = rows[0];
 
     const nextStatus = current.status === 'Active' ? 'Paused' : 'Active';
-    const updated = await prisma.automation.update({
-      where: { id },
-      data: { status: nextStatus }
-    });
+    await query('UPDATE automations SET status = ?, updated_at = NOW() WHERE id = ?', [nextStatus, id]);
 
     return {
       success: true,
-      status: updated.status
+      status: nextStatus
     };
   },
 
   async addStep(id, stepData) {
-    const count = await prisma.automationStep.count({
-      where: { automationId: id }
-    });
+    const countRows = await query('SELECT COUNT(*) as cnt FROM automation_steps WHERE automation_id = ?', [id]);
+    const nextOrder = (countRows[0]?.cnt || 0) + 1;
+    const stepId = crypto.randomUUID();
 
-    const step = await prisma.automationStep.create({
-      data: {
-        automationId: id,
-        stepOrder: count + 1,
-        type: stepData.type || 'delay',
-        title: stepData.title || `Step: ${stepData.type}`,
-        subtitle: stepData.subtitle || 'Configured action'
-      }
-    });
+    const title = stepData.title || `Step: ${stepData.type || 'action'}`;
+    const subtitle = stepData.subtitle || 'Configured action';
+    const type = stepData.type || 'delay';
 
-    const allSteps = await prisma.automationStep.findMany({
-      where: { automationId: id },
-      orderBy: { stepOrder: 'asc' }
-    });
+    await query(
+      `INSERT INTO automation_steps (id, automation_id, step_order, type, title, subtitle) VALUES (?, ?, ?, ?, ?, ?)`,
+      [stepId, id, nextOrder, type, title, subtitle]
+    );
+
+    const allSteps = await query(
+      'SELECT * FROM automation_steps WHERE automation_id = ? ORDER BY step_order ASC',
+      [id]
+    );
 
     return {
       success: true,
-      step,
+      step: { id: stepId, type, title, subtitle },
       steps: allSteps.map(s => ({
         id: s.id,
         type: s.type,
@@ -83,7 +81,6 @@ export const automationsService = {
   },
 
   async testTrigger() {
-    // Run simulation using active automation workflows
     const testResult = await automationEngine.handleTrigger('contact_signup', {
       contactId: 'test-admin',
       email: 'admin@brainovision.in',
@@ -97,4 +94,3 @@ export const automationsService = {
     };
   }
 };
-

@@ -1,4 +1,5 @@
-import { prisma } from '../../config/db.js';
+import crypto from 'crypto';
+import { query } from '../../config/db.js';
 
 export const complianceController = {
   /**
@@ -37,44 +38,29 @@ export const complianceController = {
     }
 
     try {
-      // 1. Add to Suppression table
-      await prisma.suppression.upsert({
-        where: { email },
-        create: {
-          email,
-          reason: 'Unsubscribe Request',
-          sourceCampaign: campaignId || 'RFC 8058 One-Click Opt-Out',
-          notes: 'Unsubscribe processed via compliance endpoint'
-        },
-        update: {
-          reason: 'Unsubscribe Request',
-          notes: 'Unsubscribe renewed via compliance endpoint'
-        }
-      });
+      // 1. Add to Suppression table in MySQL 8
+      const suppId = crypto.randomUUID();
+      await query(
+        `INSERT INTO suppressions (id, email, reason, source_campaign, notes)
+         VALUES (?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE reason = 'Unsubscribe Request', notes = 'RFC 8058 / User Link Unsubscribe', suppressed_at = NOW()`,
+        [suppId, email, 'Unsubscribe Request', campaignId || 'RFC 8058 One-Click Opt-Out', 'Unsubscribe processed via compliance endpoint']
+      );
 
-      // 2. Mark Contact as Unsubscribed
-      await prisma.contact.updateMany({
-        where: { email },
-        data: { status: 'Unsubscribed' }
-      });
+      // 2. Mark Contact as Unsubscribed in MySQL 8
+      await query('UPDATE contacts SET status = "Unsubscribed", updated_at = NOW() WHERE email = ?', [email]);
 
       // 3. Increment campaign unsubscribe count if linked
       if (campaignId) {
-        await prisma.campaign.update({
-          where: { id: campaignId },
-          data: { unsubscribedCount: { increment: 1 } }
-        }).catch(() => {});
+        await query('UPDATE campaigns SET unsubscribed_count = unsubscribed_count + 1 WHERE id = ?', [campaignId]).catch(() => {});
       }
 
       // 4. Record UnsubscribeEvent
-      await prisma.unsubscribeEvent.create({
-        data: {
-          email,
-          campaignId: campaignId || null,
-          ipAddress: typeof ipAddress === 'string' ? ipAddress : null,
-          reason: 'RFC 8058 / User Link Unsubscribe'
-        }
-      }).catch(() => {});
+      const ueId = crypto.randomUUID();
+      await query(
+        `INSERT INTO unsubscribe_events (id, email, campaign_id, ip_address, reason) VALUES (?, ?, ?, ?, ?)`,
+        [ueId, email, campaignId, typeof ipAddress === 'string' ? ipAddress : null, 'RFC 8058 / User Link Unsubscribe']
+      ).catch(() => {});
     } catch (err) {
       console.error('[Compliance] Error processing unsubscribe:', err.message);
     }
@@ -176,3 +162,4 @@ export const complianceController = {
     `);
   }
 };
+
