@@ -6,7 +6,7 @@ let pool = null;
 export function parseDatabaseConfig() {
   if (process.env.DB_USER && process.env.DB_PASSWORD) {
     return {
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST || '127.0.0.1',
       port: parseInt(process.env.DB_PORT || '3306', 10),
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
@@ -40,7 +40,7 @@ export function parseDatabaseConfig() {
     };
   } catch (err) {
     return {
-      host: 'localhost',
+      host: '127.0.0.1',
       port: 3306,
       user: 'root',
       password: 'MySQL@2026New',

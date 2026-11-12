@@ -3,19 +3,27 @@ import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
 
-// Load server/.env if running from workspace root, otherwise load .env
+// Load server/.env and root .env files
 const serverEnvPath = path.resolve(process.cwd(), 'server/.env');
+const localEnvPath = path.resolve(process.cwd(), '.env');
 if (fs.existsSync(serverEnvPath)) {
   dotenv.config({ path: serverEnvPath });
-} else {
-  dotenv.config();
 }
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath });
+}
+dotenv.config();
 
 const envSchema = z.object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
-  DATABASE_URL: z.string().default('mysql://flowem:Flowem@2026!@localhost:3306/flowem_db'),
+  DB_HOST: z.string().default('127.0.0.1'),
+  DB_PORT: z.string().default('3306'),
+  DB_USER: z.string().default('root'),
+  DB_PASSWORD: z.string().default('MySQL@2026New'),
+  DB_NAME: z.string().default('flowem_db'),
+  DATABASE_URL: z.string().default('mysql://root:MySQL%402026New@127.0.0.1:3306/flowem_db'),
   JWT_SECRET: z.string().default('flowem_jwt_super_secret_key_2026_brainovision'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   AWS_REGION: z.string().default('ap-south-1'),
