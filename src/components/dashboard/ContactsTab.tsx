@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Search, 
@@ -8,31 +8,39 @@ import {
   Filter, 
   CheckCircle2, 
   X, 
-  Tag, 
-  Mail, 
-  Calendar,
-  Trash2,
-  ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from 'lucide-react';
 import { MorphicCard, MorphicBadge } from '../common/MorphicCard';
-import { initialContacts } from '../../data/mockData';
 import { Contact } from '../../types';
+import { api } from '../../services/api';
 
 export const ContactsTab: React.FC = () => {
-  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // New Contact Form State
   const [newEmail, setNewEmail] = useState('');
   const [newFirstName, setNewFirstName] = useState('');
   const [newLastName, setNewLastName] = useState('');
-  const [newList, setNewList] = useState('Enterprise Leads & Accounts');
-  const [newTags, setNewTags] = useState('B2B, Verified');
+  const [newList, setNewList] = useState('New Customers & Accounts');
+  const [newTags, setNewTags] = useState('Customer, Verified');
+
+  useEffect(() => {
+    loadContacts();
+  }, []);
+
+  const loadContacts = async () => {
+    setLoading(true);
+    const data = await api.getContacts();
+    setContacts(data);
+    setLoading(false);
+  };
 
   const filteredContacts = contacts.filter(contact => {
     const matchesSearch = 
@@ -45,31 +53,31 @@ export const ContactsTab: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddContact = (e: React.FormEvent) => {
+  const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail) return;
 
-    const newEntry: Contact = {
-      id: `ct-${Date.now()}`,
+    const saved = await api.addContact({
       email: newEmail,
-      firstName: newFirstName || 'Subscriber',
-      lastName: newLastName || '',
-      status: 'Subscribed',
+      firstName: newFirstName,
+      lastName: newLastName,
       lists: [newList],
-      engagementScore: 85,
-      lastSentAt: 'Pending Dispatch',
-      createdAt: new Date().toISOString().split('T')[0],
-      deliveriesCount: 0,
-      opensCount: 0,
-      clicksCount: 0,
       tags: newTags.split(',').map(t => t.trim()).filter(Boolean)
-    };
+    });
 
-    setContacts([newEntry, ...contacts]);
+    setContacts([saved, ...contacts]);
     setIsAddModalOpen(false);
     setNewEmail('');
     setNewFirstName('');
     setNewLastName('');
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    if (confirm('Delete this contact?')) {
+      await api.deleteContact(id);
+      setContacts(contacts.filter(c => c.id !== id));
+      if (selectedContact?.id === id) setSelectedContact(null);
+    }
   };
 
   const handleExportCSV = () => {
@@ -80,7 +88,7 @@ export const ContactsTab: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `flowem_contacts_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `contacts_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -89,48 +97,48 @@ export const ContactsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       
-      {/* Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            Subscriber Directory & Contacts
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Contacts
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Total of {contacts.length} indexed subscribers. Continuous deliverability score tracking active.
+          <p className="text-xs text-slate-500 mt-1">
+            View, search, and manage your email subscribers ({contacts.length} total contacts).
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-xs text-slate-300 border border-slate-700 transition flex items-center gap-2"
+            className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 border border-slate-200 shadow-xs transition flex items-center gap-2"
           >
-            <Download className="w-4 h-4 text-slate-400" />
+            <Download className="w-4 h-4 text-slate-500" />
             <span>Export CSV</span>
           </button>
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-xs text-cyan-300 border border-cyan-500/30 transition flex items-center gap-2"
+            className="px-3.5 py-2 rounded-lg bg-sky-50 hover:bg-sky-100 text-xs font-semibold text-sky-800 border border-sky-200 transition flex items-center gap-2"
           >
-            <UploadCloud className="w-4 h-4 text-cyan-400" />
-            <span>Import CSV</span>
+            <UploadCloud className="w-4 h-4 text-sky-600" />
+            <span>Upload CSV</span>
           </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-glow-indigo flex items-center gap-2 border border-indigo-400/40"
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Single Contact</span>
+            <span>Add Contact</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-panel p-4 rounded-xl border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="glass-panel p-4 rounded-xl bg-white border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
@@ -140,19 +148,19 @@ export const ContactsTab: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-          <span className="text-xs text-slate-400 mr-1 flex items-center gap-1">
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+          <span className="text-xs text-slate-500 mr-1 flex items-center gap-1 font-medium">
             <Filter className="w-3.5 h-3.5" />
-            <span>Status:</span>
+            <span>Filter:</span>
           </span>
-          {['All', 'Subscribed', 'Unsubscribed', 'Bounced', 'Complained'].map(st => (
+          {['All', 'Subscribed', 'Unsubscribed', 'Bounced'].map(st => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 statusFilter === st
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               {st}
@@ -162,31 +170,31 @@ export const ContactsTab: React.FC = () => {
       </div>
 
       {/* Contacts Table */}
-      <div className="glass-panel rounded-2xl border border-white/5 overflow-hidden">
+      <div className="glass-panel rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/90 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
+            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase font-bold text-[11px]">
               <tr>
-                <th className="py-3.5 px-4">Contact</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Associated Lists</th>
-                <th className="py-3.5 px-4">Engagement</th>
-                <th className="py-3.5 px-4">Dispatches</th>
-                <th className="py-3.5 px-4">Opens / Clicks</th>
-                <th className="py-3.5 px-4">Tags</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
+                <th className="py-3 px-4">Contact</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">List</th>
+                <th className="py-3 px-4">Open Score</th>
+                <th className="py-3 px-4">Emails Sent</th>
+                <th className="py-3 px-4">Opens / Clicks</th>
+                <th className="py-3 px-4">Tags</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredContacts.map(contact => (
                 <tr
                   key={contact.id}
                   onClick={() => setSelectedContact(contact)}
-                  className="hover:bg-slate-800/40 transition cursor-pointer"
+                  className="hover:bg-slate-50/80 transition cursor-pointer"
                 >
                   <td className="py-3 px-4">
-                    <div className="font-medium text-white">{contact.firstName} {contact.lastName}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{contact.email}</div>
+                    <div className="font-bold text-slate-900">{contact.firstName} {contact.lastName}</div>
+                    <div className="text-[11px] text-slate-500 font-mono">{contact.email}</div>
                   </td>
                   <td className="py-3 px-4">
                     <MorphicBadge
@@ -202,38 +210,36 @@ export const ContactsTab: React.FC = () => {
                       }
                     />
                   </td>
-                  <td className="py-3 px-4">
-                    <div className="max-w-[160px] truncate text-slate-300">
-                      {contact.lists.join(', ')}
-                    </div>
+                  <td className="py-3 px-4 text-slate-800">
+                    {contact.lists.join(', ')}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div className="w-16 bg-slate-200 h-2 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
                             contact.engagementScore > 80
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-600'
                               : contact.engagementScore > 50
-                              ? 'bg-indigo-400'
-                              : 'bg-amber-400'
+                              ? 'bg-indigo-600'
+                              : 'bg-amber-500'
                           }`}
                           style={{ width: `${contact.engagementScore}%` }}
                         ></div>
                       </div>
-                      <span className="font-mono text-[11px] text-slate-400">{contact.engagementScore}</span>
+                      <span className="font-mono text-xs font-bold text-slate-700">{contact.engagementScore}%</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 font-mono text-slate-300">
+                  <td className="py-3 px-4 font-mono text-slate-800">
                     {contact.deliveriesCount}
                   </td>
-                  <td className="py-3 px-4 font-mono text-slate-300">
-                    <span className="text-emerald-400">{contact.opensCount}</span> / <span className="text-cyan-400">{contact.clicksCount}</span>
+                  <td className="py-3 px-4 font-mono">
+                    <span className="text-emerald-700 font-bold">{contact.opensCount}</span> / <span className="text-sky-700 font-bold">{contact.clicksCount}</span>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1">
                       {contact.tags.map((tg, i) => (
-                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/50">
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
                           {tg}
                         </span>
                       ))}
@@ -243,12 +249,12 @@ export const ContactsTab: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedContact(contact);
+                        handleDeleteContact(contact.id);
                       }}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center gap-1"
+                      className="p-1.5 rounded hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition"
+                      title="Delete Contact"
                     >
-                      <span>Inspect</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -260,13 +266,13 @@ export const ContactsTab: React.FC = () => {
 
       {/* Add Single Contact Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl glass-panel p-6 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-semibold text-white">Add Individual Subscriber</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Add New Contact</h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -274,20 +280,20 @@ export const ContactsTab: React.FC = () => {
 
             <form onSubmit={handleAddContact} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Email Address *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address *</label>
                 <input
                   type="email"
                   required
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   className="w-full glass-input rounded-lg px-3 py-2 text-xs"
-                  placeholder="subscriber@enterprise.com"
+                  placeholder="customer@company.com"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">First Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">First Name</label>
                   <input
                     type="text"
                     value={newFirstName}
@@ -297,7 +303,7 @@ export const ContactsTab: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Last Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Last Name</label>
                   <input
                     type="text"
                     value={newLastName}
@@ -309,27 +315,27 @@ export const ContactsTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Assign to List</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Add to List</label>
                 <select
                   value={newList}
                   onChange={(e) => setNewList(e.target.value)}
-                  className="w-full glass-input rounded-lg px-3 py-2 text-xs bg-slate-900"
+                  className="w-full glass-input rounded-lg px-3 py-2 text-xs"
                 >
-                  <option value="Enterprise Leads & Accounts">Enterprise Leads & Accounts</option>
-                  <option value="Product Infrastructure Updates">Product Infrastructure Updates</option>
-                  <option value="Global Investors & Partners">Global Investors & Partners</option>
-                  <option value="Weekly Engineering Briefing">Weekly Engineering Briefing</option>
+                  <option value="New Customers & Accounts">New Customers & Accounts</option>
+                  <option value="Product Updates & Releases">Product Updates & Releases</option>
+                  <option value="Monthly Newsletter Readers">Monthly Newsletter Readers</option>
+                  <option value="Company Partners & Investors">Company Partners & Investors</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Tags (Comma Separated)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Tags (separated by comma)</label>
                 <input
                   type="text"
                   value={newTags}
                   onChange={(e) => setNewTags(e.target.value)}
                   className="w-full glass-input rounded-lg px-3 py-2 text-xs"
-                  placeholder="B2B, Decision Maker, High Priority"
+                  placeholder="Customer, VIP, Buyer"
                 />
               </div>
 
@@ -337,15 +343,15 @@ export const ContactsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-glow-indigo"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs"
                 >
-                  Save Subscriber
+                  Save Contact
                 </button>
               </div>
             </form>
@@ -353,43 +359,52 @@ export const ContactsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Import CSV Modal */}
+      {/* Upload CSV Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl glass-panel p-6 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-semibold text-white">Bulk CSV Importer</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Upload Contacts CSV</h3>
               <button
                 onClick={() => setIsImportModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 rounded-xl p-8 text-center space-y-3 cursor-pointer transition">
-              <UploadCloud className="w-10 h-10 text-indigo-400 mx-auto" />
-              <div className="text-sm font-medium text-white">Drop your subscriber CSV file here</div>
-              <p className="text-xs text-slate-400">
-                Supports up to 250,000 records per upload batch. Automatic syntax validation and deduplication will run immediately.
+            <div className="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-xl p-8 text-center space-y-3 cursor-pointer bg-slate-50/50">
+              <UploadCloud className="w-10 h-10 text-indigo-600 mx-auto" />
+              <div className="text-sm font-bold text-slate-900">Drop your CSV file here</div>
+              <p className="text-xs text-slate-500">
+                Upload up to 250,000 email addresses. Automatic duplicate removal will run instantly.
               </p>
               <button
                 type="button"
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700"
+                onClick={() => {
+                  api.importContacts([
+                    { email: 'newuser1@company.com', firstName: 'John', lastName: 'Doe' },
+                    { email: 'newuser2@company.com', firstName: 'Emma', lastName: 'Stone' }
+                  ]).then(() => {
+                    loadContacts();
+                    setIsImportModalOpen(false);
+                  });
+                }}
+                className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white font-semibold text-xs shadow-xs"
               >
-                Browse Disk Files
+                Simulate Uploading 2 Sample Contacts
               </button>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-400 space-y-1">
-              <div className="font-semibold text-slate-300">Required CSV Columns:</div>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+              <div className="font-bold text-slate-800">CSV Column Names:</div>
               <div><code>email, first_name, last_name, tags</code></div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setIsImportModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                className="px-4 py-2 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
               >
                 Close
               </button>
@@ -400,57 +415,53 @@ export const ContactsTab: React.FC = () => {
 
       {/* Inspect Contact Drawer */}
       {selectedContact && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-slate-950/95 backdrop-blur-xl border-l border-white/10 p-6 overflow-y-auto space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white border-l border-slate-200 p-6 overflow-y-auto space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200">
             <div>
-              <h3 className="text-base font-bold text-white">{selectedContact.firstName} {selectedContact.lastName}</h3>
-              <p className="text-xs text-slate-400 font-mono">{selectedContact.email}</p>
+              <h3 className="text-base font-bold text-slate-900">{selectedContact.firstName} {selectedContact.lastName}</h3>
+              <p className="text-xs text-slate-500 font-mono">{selectedContact.email}</p>
             </div>
             <button
               onClick={() => setSelectedContact(null)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-slate-700"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-              <span className="text-xs text-slate-400 uppercase tracking-wider">Subscriber Engagement Score</span>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-xs text-slate-500 font-semibold uppercase">Open Rate Score</span>
               <div className="flex items-center justify-between">
-                <span className="text-3xl font-bold font-mono text-emerald-400">{selectedContact.engagementScore} / 100</span>
+                <span className="text-3xl font-bold font-mono text-emerald-600">{selectedContact.engagementScore}%</span>
                 <MorphicBadge label={selectedContact.status} variant="success" />
               </div>
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Total Transmissions:</span>
-                <span className="font-mono text-white">{selectedContact.deliveriesCount}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Total Emails Received:</span>
+                <span className="font-mono font-bold text-slate-900">{selectedContact.deliveriesCount}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Unique Opens:</span>
-                <span className="font-mono text-emerald-400">{selectedContact.opensCount}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Emails Opened:</span>
+                <span className="font-mono font-bold text-emerald-700">{selectedContact.opensCount}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Link Clicks:</span>
-                <span className="font-mono text-cyan-400">{selectedContact.clicksCount}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Links Clicked:</span>
+                <span className="font-mono font-bold text-sky-700">{selectedContact.clicksCount}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Subscribed Since:</span>
-                <span className="text-slate-300">{selectedContact.createdAt}</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-slate-800">
-                <span className="text-slate-400">Last Transmission:</span>
-                <span className="text-slate-300">{selectedContact.lastSentAt}</span>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-slate-500">Joined On:</span>
+                <span className="text-slate-800">{selectedContact.createdAt}</span>
               </div>
             </div>
 
             <div>
-              <h4 className="text-xs font-semibold text-slate-300 mb-2">Assigned Tags</h4>
+              <h4 className="text-xs font-bold text-slate-900 mb-2">Assigned Tags</h4>
               <div className="flex flex-wrap gap-1.5">
                 {selectedContact.tags.map((tg, i) => (
-                  <span key={i} className="px-2.5 py-1 rounded bg-slate-800 text-xs text-indigo-300 border border-slate-700">
+                  <span key={i} className="px-2.5 py-1 rounded bg-indigo-50 text-xs font-semibold text-indigo-700 border border-indigo-200">
                     {tg}
                   </span>
                 ))}

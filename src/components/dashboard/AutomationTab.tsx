@@ -1,247 +1,238 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Zap, 
   Clock, 
   Send, 
   GitBranch, 
   Tag, 
-  Webhook, 
   Plus, 
   Play, 
   Pause, 
   CheckCircle2, 
-  Sliders, 
-  Trash2, 
   X,
-  ChevronDown,
   ArrowDown
 } from 'lucide-react';
 import { MorphicCard, MorphicBadge } from '../common/MorphicCard';
-import { initialWorkflows } from '../../data/mockData';
 import { AutomationWorkflow, AutomationStep } from '../../types';
+import { api } from '../../services/api';
 
 export const AutomationTab: React.FC = () => {
-  const [workflows, setWorkflows] = useState<AutomationWorkflow[]>(initialWorkflows);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<AutomationWorkflow>(initialWorkflows[0]);
+  const [workflows, setWorkflows] = useState<AutomationWorkflow[]>([]);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<AutomationWorkflow | null>(null);
   const [isAddStepOpen, setIsAddStepOpen] = useState(false);
   const [newStepType, setNewStepType] = useState<AutomationStep['type']>('delay');
   const [newStepTitle, setNewStepTitle] = useState('');
-  const [testTriggerFired, setTestTriggerFired] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
-  const toggleStatus = (workflowId: string) => {
-    setWorkflows(prev => prev.map(w => {
-      if (w.id === workflowId) {
-        const nextStatus = w.status === 'Active' ? 'Paused' : 'Active';
-        return { ...w, status: nextStatus };
-      }
-      return w;
-    }));
-    if (selectedWorkflow.id === workflowId) {
-      setSelectedWorkflow(prev => ({
-        ...prev,
-        status: prev.status === 'Active' ? 'Paused' : 'Active'
-      }));
+  useEffect(() => {
+    loadAutomations();
+  }, []);
+
+  const loadAutomations = async () => {
+    const data = await api.getAutomations();
+    setWorkflows(data);
+    if (data.length > 0) setSelectedWorkflow(data[0]);
+  };
+
+  const handleToggleStatus = async (workflowId: string) => {
+    const res = await api.toggleAutomation(workflowId);
+    setWorkflows(workflows.map(w => w.id === workflowId ? { ...w, status: res.status as any } : w));
+    if (selectedWorkflow?.id === workflowId) {
+      setSelectedWorkflow({ ...selectedWorkflow, status: res.status as any });
     }
   };
 
-  const handleAddStep = (e: React.FormEvent) => {
+  const handleAddStep = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newStep: AutomationStep = {
-      id: `st-${Date.now()}`,
+    if (!selectedWorkflow) return;
+
+    const res = await api.addAutomationStep(selectedWorkflow.id, {
       type: newStepType,
-      title: newStepTitle || `${newStepType.toUpperCase()}: Configured Automation Node`,
-      subtitle: `Configured parameters for ${newStepType}`,
-      config: {}
-    };
+      title: newStepTitle || `Step: ${newStepType.toUpperCase()}`,
+      subtitle: `Configured ${newStepType} action`
+    });
 
-    const updatedWorkflow: AutomationWorkflow = {
-      ...selectedWorkflow,
-      steps: [...selectedWorkflow.steps, newStep]
-    };
-
-    setSelectedWorkflow(updatedWorkflow);
-    setWorkflows(workflows.map(w => w.id === updatedWorkflow.id ? updatedWorkflow : w));
+    const updated = { ...selectedWorkflow, steps: res.steps };
+    setSelectedWorkflow(updated);
+    setWorkflows(workflows.map(w => w.id === updated.id ? updated : w));
     setIsAddStepOpen(false);
     setNewStepTitle('');
   };
 
-  const handleFireTest = () => {
-    setTestTriggerFired(true);
-    setTimeout(() => {
-      setTestTriggerFired(false);
-    }, 3000);
+  const handleRunTest = async () => {
+    const res = await api.testAutomation();
+    setTestResult(res.message);
+    setTimeout(() => setTestResult(null), 4000);
   };
+
+  if (!selectedWorkflow) return null;
 
   return (
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            Visual Automation & Multi-Branch Journeys
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Automation & Follow-Ups
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Build event-driven pipelines with automated throttling, branch evaluations, and webhook callbacks.
+          <p className="text-xs text-slate-500 mt-1">
+            Automatically send welcome emails, reminders, and follow-ups based on customer actions.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <button
-            onClick={handleFireTest}
-            disabled={testTriggerFired}
-            className="px-3.5 py-2 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-xs text-cyan-300 border border-cyan-500/30 transition flex items-center gap-2"
+            onClick={handleRunTest}
+            className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold text-sky-700 border border-slate-200 shadow-xs transition flex items-center gap-2"
           >
-            <Zap className="w-4 h-4 text-cyan-400" />
-            <span>{testTriggerFired ? 'Test Event Emitted!' : 'Fire Test Webhook'}</span>
+            <Zap className="w-4 h-4 text-sky-600" />
+            <span>Send Test Trigger</span>
           </button>
           
           <button
-            onClick={() => toggleStatus(selectedWorkflow.id)}
-            className={`px-4 py-2 rounded-lg font-medium text-xs transition flex items-center gap-2 ${
+            onClick={() => handleToggleStatus(selectedWorkflow.id)}
+            className={`px-4 py-2 rounded-lg font-bold text-xs transition flex items-center gap-2 ${
               selectedWorkflow.status === 'Active'
-                ? 'bg-amber-600/20 text-amber-300 border border-amber-500/30 hover:bg-amber-600/30'
-                : 'bg-emerald-600 text-white shadow-glow-emerald hover:bg-emerald-500'
+                ? 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                : 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
             }`}
           >
             {selectedWorkflow.status === 'Active' ? (
               <>
                 <Pause className="w-4 h-4" />
-                <span>Pause Workflow</span>
+                <span>Pause Flow</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                <span>Activate Workflow</span>
+                <span>Start Flow</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {testTriggerFired && (
-        <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 text-xs flex items-center gap-2 font-mono">
-          <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-          <span>Payload received & enrolled: synthetic test subscriber ingested into step 1.</span>
+      {testResult && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>{testResult}</span>
         </div>
       )}
 
       {/* Workflow Selector Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {workflows.map(wf => (
           <div
             key={wf.id}
             onClick={() => setSelectedWorkflow(wf)}
             className={`p-4 rounded-xl border cursor-pointer transition ${
               selectedWorkflow.id === wf.id
-                ? 'bg-indigo-600/20 border-indigo-500 shadow-glow-indigo'
-                : 'glass-card hover:border-slate-700'
+                ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
+                : 'bg-white border-slate-200 hover:border-slate-300'
             }`}
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono text-indigo-400 uppercase">
-                {wf.triggerType}
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold font-mono text-indigo-700 uppercase">
+                Trigger: {wf.triggerType}
               </span>
               <MorphicBadge
                 label={wf.status}
                 variant={wf.status === 'Active' ? 'success' : 'neutral'}
               />
             </div>
-            <h3 className="text-sm font-bold text-white">{wf.name}</h3>
-            <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">{wf.description}</p>
-            <div className="flex justify-between items-center text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-800 font-mono">
-              <span>{wf.totalEnrolled.toLocaleString()} Enrolled</span>
-              <span className="text-emerald-400">{wf.avgConversionRate}% Conv</span>
+            <h3 className="text-sm font-bold text-slate-900">{wf.name}</h3>
+            <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{wf.description}</p>
+            <div className="flex justify-between items-center text-[11px] text-slate-600 mt-3 pt-2 border-t border-slate-100 font-medium">
+              <span>{wf.totalEnrolled.toLocaleString()} People Enrolled</span>
+              <span className="text-emerald-700 font-bold">{wf.avgConversionRate}% Completed</span>
             </div>
           </div>
         ))}
       </div>
 
       {/* Visual Canvas View */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 space-y-6">
+      <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-6">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-bold text-white">{selectedWorkflow.name}</h3>
+              <h3 className="text-lg font-bold text-slate-900">{selectedWorkflow.name}</h3>
               <MorphicBadge label={selectedWorkflow.status} variant={selectedWorkflow.status === 'Active' ? 'success' : 'neutral'} />
             </div>
-            <p className="text-xs text-slate-400 mt-1">{selectedWorkflow.description}</p>
+            <p className="text-xs text-slate-500 mt-1">{selectedWorkflow.description}</p>
           </div>
 
           <button
             onClick={() => setIsAddStepOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-glow-indigo flex items-center gap-2"
+            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Append Journey Node</span>
+            <span>Add Next Step</span>
           </button>
         </div>
 
         {/* Step Flow Nodes */}
-        <div className="max-w-2xl mx-auto py-4 space-y-4">
+        <div className="max-w-2xl mx-auto py-2 space-y-3">
           {selectedWorkflow.steps.map((step, index) => {
             const isTrigger = step.type === 'trigger';
             const isEmail = step.type === 'email';
             const isDelay = step.type === 'delay';
             const isCondition = step.type === 'condition';
-            const isWebhook = step.type === 'webhook';
-            const isTag = step.type === 'tag';
 
             return (
               <React.Fragment key={step.id}>
                 <div
-                  className={`p-4 rounded-xl border transition relative ${
+                  className={`p-4 rounded-xl border transition ${
                     isTrigger
-                      ? 'bg-slate-900/90 border-indigo-500/50 shadow-glow-indigo'
+                      ? 'bg-indigo-50/70 border-indigo-200'
                       : isEmail
-                      ? 'bg-slate-900/90 border-emerald-500/40'
+                      ? 'bg-white border-slate-200 shadow-xs'
                       : isDelay
-                      ? 'bg-slate-900/90 border-cyan-500/40'
+                      ? 'bg-sky-50/50 border-sky-200'
                       : isCondition
-                      ? 'bg-slate-900/90 border-purple-500/40'
-                      : 'bg-slate-900/90 border-slate-700'
+                      ? 'bg-purple-50/50 border-purple-200'
+                      : 'bg-white border-slate-200'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3.5">
                       <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
                           isTrigger
-                            ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+                            ? 'bg-indigo-600 text-white'
                             : isEmail
-                            ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-emerald-600 text-white'
                             : isDelay
-                            ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30'
+                            ? 'bg-sky-600 text-white'
                             : isCondition
-                            ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
-                            : 'bg-slate-800 text-slate-300'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-200 text-slate-800'
                         }`}
                       >
                         {isTrigger && <Zap className="w-4 h-4" />}
                         {isEmail && <Send className="w-4 h-4" />}
                         {isDelay && <Clock className="w-4 h-4" />}
                         {isCondition && <GitBranch className="w-4 h-4" />}
-                        {isWebhook && <Webhook className="w-4 h-4" />}
-                        {isTag && <Tag className="w-4 h-4" />}
+                        {step.type === 'tag' && <Tag className="w-4 h-4" />}
                       </div>
 
                       <div>
-                        <div className="text-sm font-semibold text-white">{step.title}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">{step.subtitle}</div>
+                        <div className="text-sm font-bold text-slate-900">{step.title}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">{step.subtitle}</div>
                       </div>
                     </div>
 
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-400">
-                      Node #{index + 1}
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                      Step #{index + 1}
                     </span>
                   </div>
                 </div>
 
                 {index < selectedWorkflow.steps.length - 1 && (
-                  <div className="flex flex-col items-center justify-center my-1">
-                    <div className="w-0.5 h-6 bg-slate-700"></div>
-                    <ArrowDown className="w-3.5 h-3.5 text-slate-500 -mt-1" />
+                  <div className="flex flex-col items-center justify-center my-0.5">
+                    <div className="w-0.5 h-4 bg-slate-300"></div>
+                    <ArrowDown className="w-3.5 h-3.5 text-slate-400 -mt-1" />
                   </div>
                 )}
               </React.Fragment>
@@ -253,13 +244,13 @@ export const AutomationTab: React.FC = () => {
 
       {/* Add Step Modal */}
       {isAddStepOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl glass-panel p-6 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-semibold text-white">Add Journey Node</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Add Step to Flow</h3>
               <button
                 onClick={() => setIsAddStepOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -267,29 +258,28 @@ export const AutomationTab: React.FC = () => {
 
             <form onSubmit={handleAddStep} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Node Type</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">What action should happen?</label>
                 <select
                   value={newStepType}
                   onChange={(e) => setNewStepType(e.target.value as any)}
-                  className="w-full glass-input rounded-lg px-3 py-2 text-xs bg-slate-900"
+                  className="w-full glass-input rounded-lg px-3 py-2 text-xs"
                 >
-                  <option value="delay">Time Delay (Wait N Hours/Days)</option>
-                  <option value="email">Send Email Template</option>
-                  <option value="condition">Decision Condition / Branch</option>
-                  <option value="tag">Apply Subscriber Tag</option>
-                  <option value="webhook">Webhook POST Callback</option>
+                  <option value="delay">Wait a number of days</option>
+                  <option value="email">Send an email message</option>
+                  <option value="condition">Check if they opened the email</option>
+                  <option value="tag">Add a tag to contact</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Node Title *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Step Name *</label>
                 <input
                   type="text"
                   required
                   value={newStepTitle}
                   onChange={(e) => setNewStepTitle(e.target.value)}
                   className="w-full glass-input rounded-lg px-3 py-2 text-xs"
-                  placeholder="e.g. Action: Dispatch Follow-up Advisory"
+                  placeholder="e.g. Wait 3 Days"
                 />
               </div>
 
@@ -297,15 +287,15 @@ export const AutomationTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddStepOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-glow-indigo"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs"
                 >
-                  Insert Node
+                  Save Step
                 </button>
               </div>
             </form>

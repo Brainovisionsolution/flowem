@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -7,22 +7,17 @@ import {
   Code, 
   Smartphone, 
   Monitor, 
-  Copy, 
-  CheckCircle2, 
-  X, 
-  Layers, 
-  Tag, 
-  ArrowUpRight 
+  X
 } from 'lucide-react';
 import { MorphicCard, MorphicBadge } from '../common/MorphicCard';
-import { initialTemplates } from '../../data/mockData';
 import { EmailTemplate } from '../../types';
+import { api } from '../../services/api';
 
 export const TemplatesTab: React.FC = () => {
-  const [templates, setTemplates] = useState<EmailTemplate[]>(initialTemplates);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activePreview, setActivePreview] = useState<EmailTemplate | null>(initialTemplates[0]);
+  const [activePreview, setActivePreview] = useState<EmailTemplate | null>(null);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [viewMode, setViewMode] = useState<'visual' | 'code'>('visual');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -31,7 +26,17 @@ export const TemplatesTab: React.FC = () => {
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<EmailTemplate['category']>('Transactional');
   const [newSubject, setNewSubject] = useState('');
-  const [newHtml, setNewHtml] = useState('<!DOCTYPE html><html><body><h1>Hello {{firstName}}</h1></body></html>');
+  const [newHtml, setNewHtml] = useState('<!DOCTYPE html><html><body><h1>Hello {{firstName}}</h1><p>Welcome to our platform!</p></body></html>');
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    const data = await api.getTemplates();
+    setTemplates(data);
+    if (data.length > 0) setActivePreview(data[0]);
+  };
 
   const filteredTemplates = templates.filter(t => {
     const matchesCategory = selectedCategory === 'All' || t.category === selectedCategory;
@@ -40,24 +45,20 @@ export const TemplatesTab: React.FC = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleCreateTemplate = (e: React.FormEvent) => {
+  const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle) return;
 
-    const newTpl: EmailTemplate = {
-      id: `tpl-${Date.now()}`,
+    const saved = await api.addTemplate({
       title: newTitle,
       category: newCategory,
-      subject: newSubject || 'Important notification from FlowEM',
-      previewText: 'Review details regarding this automated delivery.',
-      htmlContent: newHtml,
-      thumbnail: 'transactional',
-      updatedAt: new Date().toISOString().split('T')[0],
-      isPopular: false
-    };
+      subject: newSubject || 'Important notice',
+      previewText: 'A quick update from our team.',
+      htmlContent: newHtml
+    });
 
-    setTemplates([newTpl, ...templates]);
-    setActivePreview(newTpl);
+    setTemplates([saved, ...templates]);
+    setActivePreview(saved);
     setIsCreateOpen(false);
     setNewTitle('');
     setNewSubject('');
@@ -67,35 +68,34 @@ export const TemplatesTab: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            Responsive Email Template Library
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Email Templates
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Pixel-perfect HTML layouts tested across Outlook, Apple Mail, and Gmail dark/light modes.
+          <p className="text-xs text-slate-500 mt-1">
+            Pick from mobile-friendly email layouts or paste your own HTML ({templates.length} templates).
           </p>
         </div>
 
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition shadow-glow-indigo flex items-center gap-2 border border-indigo-400/40"
+          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition shadow-xs flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Create New Template</span>
+          <span>New Template</span>
         </button>
       </div>
 
       {/* Main Grid: Gallery & Live Interactive Previewer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Template Gallery Cards */}
+        {/* Left Column: Template Cards */}
         <div className="lg:col-span-5 space-y-4">
           
-          {/* Search & Category Pills */}
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -106,14 +106,14 @@ export const TemplatesTab: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              {['All', 'Transactional', 'System Alerts', 'Newsletter', 'Product Launch'].map(cat => (
+              {['All', 'Transactional', 'Newsletter', 'Product Launch'].map(cat => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1 rounded-lg transition whitespace-nowrap ${
+                  className={`px-3 py-1 rounded-lg font-semibold transition whitespace-nowrap ${
                     selectedCategory === cat
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   {cat}
@@ -122,29 +122,29 @@ export const TemplatesTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Cards */}
-          <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
+          {/* Cards List */}
+          <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
             {filteredTemplates.map(tpl => (
               <div
                 key={tpl.id}
                 onClick={() => setActivePreview(tpl)}
                 className={`p-4 rounded-xl border cursor-pointer transition ${
                   activePreview?.id === tpl.id
-                    ? 'bg-indigo-600/20 border-indigo-500 shadow-glow-indigo'
-                    : 'glass-card hover:border-slate-700'
+                    ? 'bg-indigo-50/80 border-indigo-300 shadow-xs'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
                       {tpl.category}
                     </span>
-                    <h3 className="text-sm font-bold text-white mt-0.5">{tpl.title}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-0.5">{tpl.title}</h3>
                   </div>
-                  {tpl.isPopular && <MorphicBadge label="Production Standard" variant="purple" />}
+                  {tpl.isPopular && <MorphicBadge label="Popular" variant="purple" />}
                 </div>
 
-                <div className="text-xs text-slate-400 mt-2 font-serif italic">
+                <div className="text-xs text-slate-600 mt-1.5 font-serif italic">
                   Subject: "{tpl.subject}"
                 </div>
 
@@ -152,9 +152,9 @@ export const TemplatesTab: React.FC = () => {
                   {tpl.previewText}
                 </p>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-3 mt-3 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-3 mt-3 border-t border-slate-100">
                   <span>Updated: {tpl.updatedAt}</span>
-                  <span className="text-indigo-400 font-medium">Inspect Preview &rarr;</span>
+                  <span className="text-indigo-600 font-semibold">Click to preview &rarr;</span>
                 </div>
               </div>
             ))}
@@ -165,22 +165,22 @@ export const TemplatesTab: React.FC = () => {
         {/* Right Column: Live Interactive Device Frame */}
         <div className="lg:col-span-7">
           {activePreview ? (
-            <div className="glass-panel p-5 rounded-2xl border border-white/10 space-y-4">
+            <div className="glass-panel p-5 rounded-2xl bg-white border border-slate-200 space-y-4">
               
               {/* Preview Bar Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
-                  <h3 className="text-base font-bold text-white">{activePreview.title}</h3>
-                  <div className="text-xs text-slate-400 font-serif italic">"{activePreview.subject}"</div>
+                  <h3 className="text-base font-bold text-slate-900">{activePreview.title}</h3>
+                  <div className="text-xs text-slate-500 font-serif italic">"{activePreview.subject}"</div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Visual vs Code switch */}
-                  <div className="flex p-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                  {/* Visual vs Code */}
+                  <div className="flex p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-semibold">
                     <button
                       onClick={() => setViewMode('visual')}
                       className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 ${
-                        viewMode === 'visual' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        viewMode === 'visual' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ export const TemplatesTab: React.FC = () => {
                     <button
                       onClick={() => setViewMode('code')}
                       className={`px-3 py-1 rounded-md transition flex items-center gap-1.5 ${
-                        viewMode === 'code' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        viewMode === 'code' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <Code className="w-3.5 h-3.5" />
@@ -199,22 +199,22 @@ export const TemplatesTab: React.FC = () => {
 
                   {/* Device toggle */}
                   {viewMode === 'visual' && (
-                    <div className="flex p-0.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                    <div className="flex p-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs">
                       <button
                         onClick={() => setPreviewDevice('desktop')}
                         className={`p-1.5 rounded-md transition ${
-                          previewDevice === 'desktop' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                          previewDevice === 'desktop' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                         }`}
-                        title="Desktop Preview (600px)"
+                        title="Desktop View (600px)"
                       >
                         <Monitor className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setPreviewDevice('mobile')}
                         className={`p-1.5 rounded-md transition ${
-                          previewDevice === 'mobile' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-slate-200'
+                          previewDevice === 'mobile' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
                         }`}
-                        title="Mobile Preview (360px)"
+                        title="Mobile Phone View (360px)"
                       >
                         <Smartphone className="w-4 h-4" />
                       </button>
@@ -223,17 +223,17 @@ export const TemplatesTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Variable Tester bar */}
-              <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between font-mono">
-                <span>Testing Dynamic Variable: <code className="text-cyan-300">{"{{firstName}}"} &rarr; "Sarah"</code></span>
-                <span className="text-[11px] text-emerald-400">Liquid / Jinja Syntax Valid</span>
+              {/* Dynamic tag hint */}
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center justify-between font-mono">
+                <span>Dynamic Tag Test: <code className="text-indigo-600 font-bold">{"{{firstName}}"} &rarr; "Sarah"</code></span>
+                <span className="text-[11px] text-emerald-700 font-sans font-bold">Variables Working</span>
               </div>
 
-              {/* View Container */}
-              <div className="min-h-[480px] rounded-xl bg-slate-950 border border-slate-800/80 p-4 flex justify-center items-start overflow-auto">
+              {/* Container */}
+              <div className="min-h-[460px] rounded-xl bg-slate-100/70 border border-slate-200 p-4 flex justify-center items-start overflow-auto">
                 {viewMode === 'visual' ? (
                   <div
-                    className={`transition-all duration-300 bg-slate-900 rounded-lg shadow-2xl border border-slate-800 overflow-hidden ${
+                    className={`transition-all duration-300 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden ${
                       previewDevice === 'desktop' ? 'w-full max-w-[620px]' : 'w-[360px]'
                     }`}
                   >
@@ -244,7 +244,7 @@ export const TemplatesTab: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <pre className="w-full text-xs font-mono text-slate-300 p-4 bg-slate-900 rounded-lg overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                  <pre className="w-full text-xs font-mono text-slate-800 p-4 bg-white border border-slate-200 rounded-lg overflow-x-auto whitespace-pre-wrap leading-relaxed">
                     {activePreview.htmlContent}
                   </pre>
                 )}
@@ -252,8 +252,8 @@ export const TemplatesTab: React.FC = () => {
 
             </div>
           ) : (
-            <div className="glass-panel p-12 text-center text-slate-400 rounded-2xl">
-              Select a template to inspect details.
+            <div className="glass-panel p-12 text-center text-slate-500 rounded-2xl bg-white">
+              Select a template on the left to preview it.
             </div>
           )}
         </div>
@@ -262,13 +262,13 @@ export const TemplatesTab: React.FC = () => {
 
       {/* Create Template Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl glass-panel p-6 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-semibold text-white">Create Custom Email Template</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Create Email Template</h3>
               <button
                 onClick={() => setIsCreateOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -276,34 +276,33 @@ export const TemplatesTab: React.FC = () => {
 
             <form onSubmit={handleCreateTemplate} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Template Title *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Template Name *</label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full glass-input rounded-lg px-3 py-2 text-xs"
-                  placeholder="e.g. Monthly Deliverability Digest"
+                  placeholder="e.g. End of Year Customer Thank You"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Category</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as any)}
-                    className="w-full glass-input rounded-lg px-3 py-2 text-xs bg-slate-900"
+                    className="w-full glass-input rounded-lg px-3 py-2 text-xs"
                   >
                     <option value="Transactional">Transactional</option>
-                    <option value="System Alerts">System Alerts</option>
                     <option value="Newsletter">Newsletter</option>
                     <option value="Product Launch">Product Launch</option>
                     <option value="Marketing">Marketing</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Default Subject</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Default Subject Line</label>
                   <input
                     type="text"
                     value={newSubject}
@@ -315,7 +314,7 @@ export const TemplatesTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">HTML Content</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">HTML Code</label>
                 <textarea
                   rows={8}
                   value={newHtml}
@@ -328,13 +327,13 @@ export const TemplatesTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-glow-indigo"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs"
                 >
                   Save Template
                 </button>

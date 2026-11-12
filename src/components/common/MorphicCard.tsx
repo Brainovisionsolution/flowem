@@ -17,9 +17,9 @@ export const MorphicCard: React.FC<MorphicCardProps> = ({
 }) => {
   const glowStyles = {
     none: '',
-    indigo: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-indigo-500/20 before:to-purple-500/20 before:rounded-2xl before:blur-sm before:-z-10',
-    cyan: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-cyan-500/20 before:to-blue-500/20 before:rounded-2xl before:blur-sm before:-z-10',
-    emerald: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-emerald-500/20 before:to-teal-500/20 before:rounded-2xl before:blur-sm before:-z-10',
+    indigo: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-indigo-200 before:to-purple-200 before:rounded-2xl before:blur-sm before:-z-10',
+    cyan: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-cyan-200 before:to-blue-200 before:rounded-2xl before:blur-sm before:-z-10',
+    emerald: 'relative before:absolute before:-inset-px before:bg-gradient-to-r before:from-emerald-200 before:to-teal-200 before:rounded-2xl before:blur-sm before:-z-10',
   };
 
   return (
@@ -38,12 +38,12 @@ export const MorphicBadge: React.FC<{
   size?: 'sm' | 'md';
 }> = ({ label, variant = 'neutral', size = 'sm' }) => {
   const styles = {
-    success: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    error: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-    info: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
-    purple: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-    neutral: 'bg-slate-700/30 text-slate-300 border-slate-600/30',
+    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    warning: 'bg-amber-50 text-amber-700 border-amber-200',
+    error: 'bg-rose-50 text-rose-700 border-rose-200',
+    info: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    purple: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    neutral: 'bg-slate-100 text-slate-700 border-slate-200',
   };
 
   const sizes = {
@@ -53,7 +53,7 @@ export const MorphicBadge: React.FC<{
 
   return (
     <span
-      className={`inline-flex items-center font-medium border rounded-full backdrop-blur-md uppercase tracking-wider ${sizes[size]} ${styles[variant]}`}
+      className={`inline-flex items-center font-medium border rounded-full uppercase tracking-wider ${sizes[size]} ${styles[variant]}`}
     >
       {label}
     </span>

@@ -1,94 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building, 
   Key, 
   Webhook, 
-  ShieldCheck, 
-  Copy, 
   CheckCircle2, 
   Plus, 
   Trash2, 
   X, 
-  Lock, 
-  Globe, 
+  Copy,
   Send 
 } from 'lucide-react';
 import { MorphicCard, MorphicBadge } from '../common/MorphicCard';
-import { initialOrganization } from '../../data/mockData';
 import { OrganizationSettings } from '../../types';
+import { api } from '../../services/api';
 
 export const OrganizationSettingsTab: React.FC = () => {
-  const [org, setOrg] = useState<OrganizationSettings>(initialOrganization);
+  const [org, setOrg] = useState<OrganizationSettings | null>(null);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [isAddKeyOpen, setIsAddKeyOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
-  const [webhookTestStatus, setWebhookTestStatus] = useState<string | null>(null);
+  const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
 
   // Form states
-  const [companyName, setCompanyName] = useState(org.companyName);
-  const [companyAddress, setCompanyAddress] = useState(org.companyAddress);
-  const [complianceContact, setComplianceContact] = useState(org.complianceContact);
-  const [twoFactor, setTwoFactor] = useState(org.enforceTwoFactor);
-  const [webhookUrl, setWebhookUrl] = useState(org.webhookUrl);
-  const [savedNotification, setSavedNotification] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [complianceContact, setComplianceContact] = useState('');
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [savedNote, setSavedNote] = useState(false);
+
+  useEffect(() => {
+    loadOrg();
+  }, []);
+
+  const loadOrg = async () => {
+    const data = await api.getOrganization();
+    setOrg(data);
+    setCompanyName(data.companyName);
+    setCompanyAddress(data.companyAddress);
+    setComplianceContact(data.complianceContact);
+    setTwoFactor(data.enforceTwoFactor);
+    setWebhookUrl(data.webhookUrl);
+  };
 
   const handleCopyKey = (keyId: string, prefix: string) => {
-    navigator.clipboard.writeText(`${prefix}_SECRET_TOKEN_2026`);
+    navigator.clipboard.writeText(`${prefix}_SECRET_KEY_2026`);
     setCopiedKeyId(keyId);
     setTimeout(() => setCopiedKeyId(null), 2500);
   };
 
-  const handleCreateKey = (e: React.FormEvent) => {
+  const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyName) return;
+    if (!newKeyName || !org) return;
 
-    const newKey = {
-      id: `key-${Date.now()}`,
-      name: newKeyName,
-      prefix: `flw_live_${Math.random().toString(36).substring(2, 8)}...${Math.random().toString(36).substring(2, 5)}`,
-      created: new Date().toISOString().split('T')[0],
-      lastUsed: 'Never'
-    };
-
-    setOrg(prev => ({
-      ...prev,
-      apiKeys: [...prev.apiKeys, newKey]
-    }));
-
+    const newKey = await api.createApiKey(newKeyName);
+    setOrg({
+      ...org,
+      apiKeys: [...org.apiKeys, newKey]
+    });
     setIsAddKeyOpen(false);
     setNewKeyName('');
   };
 
-  const handleRevokeKey = (keyId: string) => {
-    if (confirm('Revoke this API Key immediately? Systems using this token will fail to authenticate.')) {
-      setOrg(prev => ({
-        ...prev,
-        apiKeys: prev.apiKeys.filter(k => k.id !== keyId)
-      }));
+  const handleRevokeKey = async (keyId: string) => {
+    if (!org) return;
+    if (confirm('Delete this API Key? Any code using it will stop sending.')) {
+      await api.revokeApiKey(keyId);
+      setOrg({
+        ...org,
+        apiKeys: org.apiKeys.filter(k => k.id !== keyId)
+      });
     }
   };
 
-  const handleTestWebhook = () => {
-    setWebhookTestStatus('Dispatching HMAC-signed ping event...');
-    setTimeout(() => {
-      setWebhookTestStatus('Webhook delivered successfully: HTTP 200 OK from endpoint.');
-      setTimeout(() => setWebhookTestStatus(null), 4000);
-    }, 800);
+  const handleTestWebhook = async () => {
+    const res = await api.testWebhook();
+    setWebhookStatus(res.message);
+    setTimeout(() => setWebhookStatus(null), 4000);
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    setOrg(prev => ({
-      ...prev,
+    if (!org) return;
+
+    const updated = await api.updateOrganization({
       companyName,
       companyAddress,
       complianceContact,
       enforceTwoFactor: twoFactor,
       webhookUrl
-    }));
-    setSavedNotification(true);
-    setTimeout(() => setSavedNotification(false), 3000);
+    });
+
+    setOrg(updated);
+    setSavedNote(true);
+    setTimeout(() => setSavedNote(false), 3000);
   };
+
+  if (!org) return null;
 
   const quotaPercent = Math.round((org.currentUsage / org.monthlyQuota) * 100);
 
@@ -96,68 +104,68 @@ export const OrganizationSettingsTab: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            Organization & System Settings
+          <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Company & Account Settings
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Manage corporate identity, monthly transmission quotas, API key rotation, and webhook callbacks.
+          <p className="text-xs text-slate-500 mt-1">
+            Manage your company details, monthly email limit, API keys, and notification webhooks.
           </p>
         </div>
 
-        {savedNotification && (
-          <div className="px-3.5 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Settings persisted successfully.</span>
+        {savedNote && (
+          <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Settings saved successfully!</span>
           </div>
         )}
       </div>
 
-      {/* Sending Quota Meter Card */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
+      {/* Sending Quota Meter */}
+      <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase text-indigo-400">{org.planName}</span>
-              <MorphicBadge label="Active Contract" variant="purple" />
+              <span className="text-xs font-bold uppercase text-indigo-700">{org.planName}</span>
+              <MorphicBadge label="Active Plan" variant="purple" />
             </div>
-            <h3 className="text-lg font-bold text-white mt-0.5">Monthly Dispatch Quota Utilization</h3>
+            <h3 className="text-lg font-bold text-slate-900 mt-0.5">Monthly Email Sending Quota</h3>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold font-mono text-white">
+            <span className="text-2xl font-bold font-mono text-slate-900">
               {org.currentUsage.toLocaleString()}
             </span>
-            <span className="text-xs text-slate-400 font-mono"> / {org.monthlyQuota.toLocaleString()} Emails</span>
+            <span className="text-xs text-slate-500 font-mono"> / {org.monthlyQuota.toLocaleString()} emails used</span>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
             <div
-              className="bg-gradient-to-r from-indigo-500 via-cyan-400 to-indigo-400 h-full rounded-full transition-all duration-500"
+              className="bg-indigo-600 h-full rounded-full transition-all duration-500"
               style={{ width: `${quotaPercent}%` }}
             ></div>
           </div>
-          <div className="flex justify-between text-xs text-slate-400 font-mono">
-            <span>Utilization: {quotaPercent}%</span>
-            <span>{(org.monthlyQuota - org.currentUsage).toLocaleString()} Dispatches Remaining</span>
+          <div className="flex justify-between text-xs text-slate-600 font-medium font-mono">
+            <span>Used: {quotaPercent}%</span>
+            <span>{(org.monthlyQuota - org.currentUsage).toLocaleString()} emails remaining this month</span>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Left Column: Corporate & Compliance Profile */}
-        <div className="lg:col-span-7 glass-panel p-6 rounded-2xl border border-white/5 space-y-5">
-          <h3 className="text-base font-semibold text-white flex items-center gap-2">
-            <Building className="w-4 h-4 text-indigo-400" />
-            Corporate Entity & Compliance Profile
+        {/* Left Column: Company Profile */}
+        <div className="lg:col-span-7 glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-5">
+          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Building className="w-4 h-4 text-indigo-600" />
+            Company Details & Legal Address
           </h3>
 
           <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
             <div>
-              <label className="block font-medium text-slate-300 mb-1">Company Registered Legal Name *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Company Legal Name *</label>
               <input
                 type="text"
                 value={companyName}
@@ -167,8 +175,8 @@ export const OrganizationSettingsTab: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-medium text-slate-300 mb-1">
-                Physical Headquarters Address (CAN-SPAM Mandatory) *
+              <label className="block font-semibold text-slate-700 mb-1">
+                Physical Office Address (Required for legal email footers) *
               </label>
               <textarea
                 rows={2}
@@ -176,13 +184,13 @@ export const OrganizationSettingsTab: React.FC = () => {
                 onChange={(e) => setCompanyAddress(e.target.value)}
                 className="w-full glass-input rounded-lg px-3 py-2 text-xs"
               />
-              <p className="text-[10px] text-slate-500 mt-1">
-                This exact physical address is automatically inserted into outbound email footers to satisfy federal CAN-SPAM mandates.
+              <p className="text-[11px] text-slate-500 mt-1">
+                This physical address is automatically placed at the bottom of sent emails to keep them out of spam.
               </p>
             </div>
 
             <div>
-              <label className="block font-medium text-slate-300 mb-1">Data Protection Officer / Compliance Contact *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Support & Privacy Email *</label>
               <input
                 type="email"
                 value={complianceContact}
@@ -191,35 +199,25 @@ export const OrganizationSettingsTab: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block font-medium text-slate-300 mb-1">Workspace Timezone</label>
-              <input
-                type="text"
-                disabled
-                value={org.timeZone}
-                className="w-full glass-input rounded-lg px-3 py-2 text-xs opacity-75 cursor-not-allowed bg-slate-900"
-              />
-            </div>
-
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
               <div>
-                <div className="font-semibold text-slate-200">Mandate Hardware 2FA</div>
-                <div className="text-[11px] text-slate-400">Require FIDO2 / TOTP for all team logins</div>
+                <div className="font-bold text-slate-900">Require 2-Factor Authentication</div>
+                <div className="text-[11px] text-slate-500">Require a security code when team members log in</div>
               </div>
               <input
                 type="checkbox"
                 checked={twoFactor}
                 onChange={(e) => setTwoFactor(e.target.checked)}
-                className="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700"
+                className="w-4 h-4 rounded text-indigo-600 border-slate-300"
               />
             </div>
 
             <div className="pt-2">
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition shadow-glow-indigo"
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition shadow-xs"
               >
-                Save Organization Profile
+                Save Changes
               </button>
             </div>
           </form>
@@ -229,51 +227,51 @@ export const OrganizationSettingsTab: React.FC = () => {
         <div className="lg:col-span-5 space-y-6">
           
           {/* API Keys */}
-          <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
+          <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                <Key className="w-4 h-4 text-cyan-400" />
-                REST API Dispatch Keys
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Key className="w-4 h-4 text-sky-600" />
+                API Keys (Send via Code)
               </h3>
               <button
                 onClick={() => setIsAddKeyOpen(true)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Create Key</span>
+                <span>New Key</span>
               </button>
             </div>
 
             <div className="space-y-3">
               {org.apiKeys.map(k => (
-                <div key={k.id} className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5">
+                <div key={k.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-white">{k.name}</span>
+                    <span className="text-xs font-bold text-slate-900">{k.name}</span>
                     <button
                       onClick={() => handleRevokeKey(k.id)}
-                      className="text-slate-500 hover:text-rose-400 p-1"
-                      title="Revoke Key"
+                      className="text-slate-400 hover:text-rose-600 p-1"
+                      title="Delete Key"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-mono bg-black/40 p-2 rounded border border-slate-800">
-                    <span className="text-slate-400">{k.prefix}</span>
+                  <div className="flex items-center justify-between text-xs font-mono bg-white p-2 rounded border border-slate-200">
+                    <span className="text-slate-600">{k.prefix}</span>
                     <button
                       onClick={() => handleCopyKey(k.id, k.prefix)}
-                      className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-[11px]"
+                      className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1 text-[11px] font-sans font-semibold"
                     >
                       {copiedKeyId === k.id ? (
-                        <span className="text-emerald-400 font-sans">Copied!</span>
+                        <span className="text-emerald-700">Copied!</span>
                       ) : (
                         <>
                           <Copy className="w-3 h-3" />
-                          <span className="font-sans">Copy</span>
+                          <span>Copy</span>
                         </>
                       )}
                     </button>
                   </div>
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
                     <span>Created: {k.created}</span>
                     <span>Last used: {k.lastUsed}</span>
                   </div>
@@ -282,16 +280,16 @@ export const OrganizationSettingsTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Webhook Configuration */}
-          <div className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4">
-            <h3 className="text-base font-semibold text-white flex items-center gap-2">
-              <Webhook className="w-4 h-4 text-purple-400" />
-              Event Webhook Endpoint
+          {/* Webhook Endpoint */}
+          <div className="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Webhook className="w-4 h-4 text-purple-600" />
+              Webhook Alerts
             </h3>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-300 mb-1">Target Endpoint URL</label>
+                <label className="block text-slate-700 font-semibold mb-1">Your Website Webhook URL</label>
                 <input
                   type="url"
                   value={webhookUrl}
@@ -300,19 +298,19 @@ export const OrganizationSettingsTab: React.FC = () => {
                 />
               </div>
 
-              {webhookTestStatus && (
-                <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-[11px]">
-                  {webhookTestStatus}
+              {webhookStatus && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium">
+                  {webhookStatus}
                 </div>
               )}
 
               <button
                 type="button"
                 onClick={handleTestWebhook}
-                className="w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700 transition flex items-center justify-center gap-2"
+                className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-800 border border-slate-200 transition flex items-center justify-center gap-2"
               >
-                <Send className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Dispatch Test Webhook Ping</span>
+                <Send className="w-3.5 h-3.5 text-sky-600" />
+                <span>Send Test Webhook</span>
               </button>
             </div>
           </div>
@@ -323,13 +321,13 @@ export const OrganizationSettingsTab: React.FC = () => {
 
       {/* Add API Key Modal */}
       {isAddKeyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl glass-panel p-6 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-semibold text-white">Generate Dispatch API Token</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 border border-slate-200 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Create New API Key</h3>
               <button
                 onClick={() => setIsAddKeyOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -337,37 +335,28 @@ export const OrganizationSettingsTab: React.FC = () => {
 
             <form onSubmit={handleCreateKey} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Token Identifier Name *</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Key Name *</label>
                 <input
                   type="text"
                   required
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
                   className="w-full glass-input rounded-lg px-3 py-2 text-xs"
-                  placeholder="e.g. Production Backend Worker"
+                  placeholder="e.g. Website Backend Key"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Access Scope</label>
-                <select className="w-full glass-input rounded-lg px-3 py-2 text-xs bg-slate-900">
-                  <option>Full Transmission & Campaign Authority</option>
-                  <option>Transactional Dispatch Only</option>
-                  <option>Read-Only Analytics Telemetry</option>
-                </select>
               </div>
 
               <div className="pt-3 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddKeyOpen(false)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-xs text-slate-300 hover:bg-slate-700"
+                  className="px-4 py-2 rounded-lg bg-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-glow-indigo"
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs"
                 >
                   Generate Key
                 </button>

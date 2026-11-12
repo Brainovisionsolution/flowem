@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, ShieldCheck, Cpu, ArrowUpRight, ChevronRight } from 'lucide-react';
+import { Layers, ShieldCheck, ArrowUpRight, ChevronRight } from 'lucide-react';
 
 interface NavbarProps {
   onOpenLogin: () => void;
@@ -13,46 +13,46 @@ export const Navbar: React.FC<NavbarProps> = ({
   onEnterDashboard,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/[0.08] bg-[#060913]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/90 bg-white/85 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
           {/* Logo & Brand */}
           <div className="flex items-center gap-4">
             <a href="#" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-slate-900 p-0.5 shadow-glow-indigo transition-transform group-hover:scale-105">
-                <div className="w-full h-full bg-[#090e1c] rounded-[10px] flex items-center justify-center border border-indigo-400/30">
-                  <Layers className="w-5 h-5 text-indigo-400" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 p-0.5 shadow-sm transition-transform group-hover:scale-105">
+                <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center border border-indigo-100">
+                  <Layers className="w-5 h-5 text-indigo-600" />
                 </div>
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+                <span className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
                   FlowEM
-                  <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
-                    Enterprise
+                  <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold">
+                    Platform
                   </span>
                 </span>
-                <span className="text-[11px] text-slate-400 tracking-wider">
-                  Bulk Email Automation Platform
+                <span className="text-[11px] text-slate-500 tracking-wider">
+                  Bulk Email & Automation Platform
                 </span>
               </div>
             </a>
 
-            <div className="hidden lg:flex items-center ml-8 pl-8 border-l border-white/10 space-x-7 text-sm text-slate-300">
-              <a href="#architecture" className="hover:text-indigo-400 transition-colors">
-                MTA Architecture
+            <div className="hidden lg:flex items-center ml-8 pl-8 border-l border-slate-200 space-x-7 text-sm font-medium text-slate-600">
+              <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">
+                How It Works
               </a>
-              <a href="#deliverability" className="hover:text-indigo-400 transition-colors">
-                Deliverability Engine
+              <a href="#features" className="hover:text-indigo-600 transition-colors">
+                Key Features
               </a>
-              <a href="#features" className="hover:text-indigo-400 transition-colors">
-                Capabilities
+              <a href="#inbox-safety" className="hover:text-indigo-600 transition-colors">
+                Inbox Delivery
               </a>
-              <a href="#compliance" className="hover:text-indigo-400 transition-colors">
-                Compliance & RFC
+              <a href="#domain-setup" className="hover:text-indigo-600 transition-colors">
+                Domain Setup
               </a>
-              <a href="#sla" className="hover:text-indigo-400 transition-colors">
-                Global Telemetry
+              <a href="#pricing" className="hover:text-indigo-600 transition-colors">
+                Plans
               </a>
             </div>
           </div>
@@ -61,22 +61,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-3">
             <button
               onClick={onOpenLogin}
-              className="px-4 py-2 text-sm font-medium text-slate-200 hover:text-white rounded-lg hover:bg-slate-800/60 transition border border-transparent hover:border-slate-700"
+              className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition"
             >
               Log In
             </button>
             <button
               onClick={onOpenRegister}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-200 border border-indigo-500/30 transition shadow-sm"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition"
             >
               <span>Get Started</span>
-              <ChevronRight className="w-4 h-4 text-indigo-400" />
+              <ChevronRight className="w-4 h-4 text-slate-600" />
             </button>
             <button
               onClick={onEnterDashboard}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-glow-indigo border border-indigo-400/40"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm"
             >
-              <span>Console Dashboard</span>
+              <span>Open Dashboard</span>
               <ArrowUpRight className="w-4 h-4" />
             </button>
           </div>

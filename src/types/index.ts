@@ -151,3 +151,4 @@ export interface TeamMember {
   status: 'Active' | 'Invited' | 'Suspended';
   lastLogin: string;
 }
+

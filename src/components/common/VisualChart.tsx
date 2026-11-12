@@ -27,7 +27,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
   const deliveredPoints = getPoints('delivered');
   const opensPoints = getPoints('opens');
 
-  // Create area path for sent
+  // Area path
   const firstX = paddingX;
   const lastX = paddingX + chartW;
   const baseY = paddingY + chartH;
@@ -38,20 +38,15 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="w-full h-auto overflow-visible"
-        style={{ filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))' }}
       >
         <defs>
-          <linearGradient id="sentGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
-          </linearGradient>
-          <linearGradient id="deliveredGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
+          <linearGradient id="sentGradientLight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
           </linearGradient>
         </defs>
 
-        {/* Horizontal gridlines */}
+        {/* Gridlines */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
           const y = paddingY + chartH * (1 - ratio);
           return (
@@ -61,7 +56,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
                 y1={y}
                 x2={width - paddingX}
                 y2={y}
-                stroke="rgba(255, 255, 255, 0.08)"
+                stroke="#e2e8f0"
                 strokeDasharray="4 4"
               />
               <text
@@ -69,7 +64,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
                 y={y + 4}
                 textAnchor="end"
                 fontSize="10"
-                fill="#64748b"
+                fill="#94a3b8"
                 className="font-mono"
               >
                 {Math.round((maxVal * ratio) / 1000)}k
@@ -79,12 +74,12 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
         })}
 
         {/* Area fill */}
-        <path d={sentArea} fill="url(#sentGradient)" />
+        <path d={sentArea} fill="url(#sentGradientLight)" />
 
         {/* Lines */}
         <polyline
           fill="none"
-          stroke="#6366f1"
+          stroke="#4f46e5"
           strokeWidth="2.5"
           points={sentPoints}
           strokeLinecap="round"
@@ -92,7 +87,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
         />
         <polyline
           fill="none"
-          stroke="#06b6d4"
+          stroke="#0284c7"
           strokeWidth="2"
           points={deliveredPoints}
           strokeLinecap="round"
@@ -118,8 +113,8 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
               cx={x}
               cy={y}
               r="3.5"
-              fill="#6366f1"
-              stroke="#0f172a"
+              fill="#4f46e5"
+              stroke="#ffffff"
               strokeWidth="2"
             />
           );
@@ -136,7 +131,7 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
               y={height - 5}
               textAnchor="middle"
               fontSize="10"
-              fill="#94a3b8"
+              fill="#64748b"
             >
               {d.time}
             </text>
@@ -144,18 +139,18 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
         })}
       </svg>
 
-      <div className="flex items-center justify-center gap-6 mt-3 text-xs text-slate-400">
+      <div className="flex items-center justify-center gap-6 mt-3 text-xs text-slate-600">
         <div className="flex items-center gap-2">
-          <span className="w-3 h-1 bg-indigo-500 rounded-full inline-block"></span>
-          <span>Dispatch Velocity</span>
+          <span className="w-3 h-1 bg-indigo-600 rounded-full inline-block"></span>
+          <span>Emails Sent</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-3 h-1 bg-cyan-500 rounded-full inline-block"></span>
+          <span className="w-3 h-1 bg-sky-600 rounded-full inline-block"></span>
           <span>Delivered</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-1 bg-emerald-500 rounded-full inline-block border-b border-dashed"></span>
-          <span>Unique Opens</span>
+          <span>Opened</span>
         </div>
       </div>
     </div>
