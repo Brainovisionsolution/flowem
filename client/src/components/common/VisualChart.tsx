@@ -8,18 +8,23 @@ interface ThroughputChartProps {
 export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height = 220 }) => {
   if (!data || data.length === 0) return null;
 
-  const maxVal = Math.max(...data.map(d => d.sent)) * 1.15;
+  const rawMax = Math.max(0, ...data.map(d => Math.max(Number(d.sent) || 0, Number(d.delivered) || 0, Number(d.opens) || 0)));
+  const maxVal = rawMax > 0 ? rawMax * 1.15 : 100;
   const width = 640;
   const paddingX = 40;
   const paddingY = 25;
   const chartW = width - paddingX * 2;
   const chartH = height - paddingY * 2;
+  const count = Math.max(data.length - 1, 1);
 
   const getPoints = (key: 'sent' | 'delivered' | 'opens') => {
     return data.map((d, i) => {
-      const x = paddingX + (i / (data.length - 1)) * chartW;
-      const y = paddingY + chartH - (d[key] / maxVal) * chartH;
-      return `${x},${y}`;
+      const x = paddingX + (i / count) * chartW;
+      const val = Number(d[key]) || 0;
+      const y = paddingY + chartH - (val / maxVal) * chartH;
+      const safeX = Number.isFinite(x) ? x : paddingX;
+      const safeY = Number.isFinite(y) ? y : paddingY + chartH;
+      return `${safeX},${safeY}`;
     }).join(' ');
   };
 
@@ -31,7 +36,8 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
   const firstX = paddingX;
   const lastX = paddingX + chartW;
   const baseY = paddingY + chartH;
-  const sentArea = `M ${firstX},${baseY} L ${sentPoints.split(' ')[0]} ${sentPoints} L ${lastX},${baseY} Z`;
+  const firstPoint = sentPoints.split(' ')[0] || `${firstX},${baseY}`;
+  const sentArea = `M ${firstX},${baseY} L ${firstPoint} ${sentPoints} L ${lastX},${baseY} Z`;
 
   return (
     <div className="w-full overflow-hidden">
@@ -49,25 +55,28 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
         {/* Gridlines */}
         {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
           const y = paddingY + chartH * (1 - ratio);
+          const safeY = Number.isFinite(y) ? y : paddingY;
+          const labelVal = rawMax > 0 ? Math.round((maxVal * ratio) / 1000) : Math.round(100 * ratio);
+          const labelText = rawMax > 0 ? `${labelVal}k` : `${labelVal}`;
           return (
             <g key={idx}>
               <line
                 x1={paddingX}
-                y1={y}
+                y1={safeY}
                 x2={width - paddingX}
-                y2={y}
+                y2={safeY}
                 stroke="#e2e8f0"
                 strokeDasharray="4 4"
               />
               <text
                 x={paddingX - 8}
-                y={y + 4}
+                y={safeY + 4}
                 textAnchor="end"
                 fontSize="10"
                 fill="#94a3b8"
                 className="font-mono"
               >
-                {Math.round((maxVal * ratio) / 1000)}k
+                {labelText}
               </text>
             </g>
           );
@@ -105,13 +114,16 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
 
         {/* Data points */}
         {data.map((d, i) => {
-          const x = paddingX + (i / (data.length - 1)) * chartW;
-          const y = paddingY + chartH - (d.sent / maxVal) * chartH;
+          const x = paddingX + (i / count) * chartW;
+          const val = Number(d.sent) || 0;
+          const y = paddingY + chartH - (val / maxVal) * chartH;
+          const safeX = Number.isFinite(x) ? x : paddingX;
+          const safeY = Number.isFinite(y) ? y : paddingY + chartH;
           return (
             <circle
               key={i}
-              cx={x}
-              cy={y}
+              cx={safeX}
+              cy={safeY}
               r="3.5"
               fill="#4f46e5"
               stroke="#ffffff"
@@ -123,11 +135,12 @@ export const ThroughputChart: React.FC<ThroughputChartProps> = ({ data, height =
         {/* X Axis labels */}
         {data.map((d, i) => {
           if (i % 2 !== 0 && i !== data.length - 1) return null;
-          const x = paddingX + (i / (data.length - 1)) * chartW;
+          const x = paddingX + (i / count) * chartW;
+          const safeX = Number.isFinite(x) ? x : paddingX;
           return (
             <text
               key={i}
-              x={x}
+              x={safeX}
               y={height - 5}
               textAnchor="middle"
               fontSize="10"
