@@ -125,6 +125,31 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
+  updateTemplate: (id: string, data: Partial<EmailTemplate>) => request<EmailTemplate>(`/templates/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  deleteTemplate: (id: string) => request<{ success: boolean; message: string }>(`/templates/${id}`, {
+    method: 'DELETE'
+  }),
+  sendBulkWithTemplate: (data: {
+    templateId: string;
+    senderEmail?: string;
+    senderName?: string;
+    subject?: string;
+    recipients: Array<{ email: string; firstName?: string; lastName?: string }>;
+  }) => request<{
+    success: boolean;
+    campaignId: string;
+    campaignName: string;
+    totalRecipients: number;
+    totalSent: number;
+    senderEmail: string;
+    message: string;
+  }>('/templates/send-bulk', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
 
   // Automations
   getAutomations: () => request<AutomationWorkflow[]>('/automations'),

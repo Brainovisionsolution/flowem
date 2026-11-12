@@ -109,7 +109,9 @@ export function App() {
               onCloseWizard={() => setIsQuickSendOpen(false)}
             />
           )}
-          {currentTab === 'templates' && <TemplatesTab />}
+          {currentTab === 'templates' && (
+            <TemplatesTab onNavigate={(tab) => setCurrentTab(tab)} />
+          )}
           {currentTab === 'automation' && <AutomationTab />}
           {currentTab === 'analytics' && <AnalyticsTab />}
           {currentTab === 'sender-config' && <SenderConfigTab />}

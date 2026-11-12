@@ -48,5 +48,24 @@ export const templatesController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async delete(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await templatesService.deleteTemplate(id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  async sendBulk(req, res, next) {
+    try {
+      const result = await templatesService.sendBulkWithTemplate(req.body);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
   }
 };
