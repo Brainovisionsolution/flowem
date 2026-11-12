@@ -3,14 +3,18 @@ import path from 'path';
 import fs from 'fs';
 import { z } from 'zod';
 
-// Load server/.env and root .env files
-const serverEnvPath = path.resolve(process.cwd(), 'server/.env');
-const localEnvPath = path.resolve(process.cwd(), '.env');
-if (fs.existsSync(serverEnvPath)) {
-  dotenv.config({ path: serverEnvPath });
-}
-if (fs.existsSync(localEnvPath)) {
-  dotenv.config({ path: localEnvPath });
+// Load environment files from all potential execution paths
+const candidateEnvPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'server/.env'),
+  path.resolve(process.cwd(), '../.env'),
+  path.resolve(process.cwd(), '../server/.env')
+];
+
+for (const envPath of candidateEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
 }
 dotenv.config();
 

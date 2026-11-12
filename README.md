@@ -203,18 +203,21 @@ flowemb/
 ## How to Run & Build
 
 ### 1. Configure MySQL 8 Database
-Connect to your local or VPS MySQL 8 server and initialize the database:
-```sql
-CREATE DATABASE IF NOT EXISTS flowem_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'flowem'@'localhost' IDENTIFIED BY 'Flowem@2026!';
-GRANT ALL PRIVILEGES ON flowem_db.* TO 'flowem'@'localhost';
-FLUSH PRIVILEGES;
+FlowEM is pre-configured to connect to your local MySQL 8 database instance using the credentials in `server/.env` and `.env`:
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=MySQL@2026New
+DB_NAME=flowem_db
+DATABASE_URL="mysql://root:MySQL%402026New@127.0.0.1:3306/flowem_db"
 ```
 
-Update `server/.env` if you have custom credentials:
-```env
-DATABASE_URL="mysql://flowem:Flowem@2026!@localhost:3306/flowem_db"
+To explicitly verify or initialize all 24 MySQL 8 tables and seed the Admin account at any time:
+```bash
+npm run db:init
 ```
+*(Note: When you run `npm run dev` or `npm run dev:server`, FlowEM will also automatically create the `flowem_db` database and all 24 tables if they do not exist).*
 
 ### 2. Start Both Client and Server Together (from Root)
 ```bash

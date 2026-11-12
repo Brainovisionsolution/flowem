@@ -5,6 +5,20 @@ import crypto from 'crypto';
 import { env } from '../../config/env.js';
 import { UnauthorizedError, ForbiddenError, NotFoundError } from '../../utils/errors.js';
 
+async function safeQuery(sql, params = []) {
+  try {
+    return await query(sql, params);
+  } catch (err) {
+    if (err.code === 'ER_NO_SUCH_TABLE' || err.errno === 1146 || String(err.message).includes("doesn't exist")) {
+      console.log('[Auth] Database tables missing, triggering automatic schema initialization...');
+      const { initializeDatabase } = await import('../../db/initDb.js');
+      await initializeDatabase();
+      return await query(sql, params);
+    }
+    throw err;
+  }
+}
+
 export const authService = {
   // Public employee registration is disabled in single-admin mode
   async register() {
@@ -17,7 +31,7 @@ export const authService = {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const rows = await query('SELECT * FROM users WHERE email = ? LIMIT 1', [cleanEmail]);
+    const rows = await safeQuery('SELECT * FROM users WHERE email = ? LIMIT 1', [cleanEmail]);
     let user = rows[0];
 
     // Self-healing bootstrap: if database has zero users, check against env ADMIN credentials
@@ -29,12 +43,12 @@ export const authService = {
         const passwordHash = await bcrypt.hash(configuredPassword, 10);
         const adminId = crypto.randomUUID();
 
-        await query(
+        await safeQuery(
           `INSERT INTO users (id, email, password_hash, name, role, status) VALUES (?, ?, ?, ?, ?, ?)`,
           [adminId, cleanEmail, passwordHash, 'System Administrator', 'Admin', 'Active']
         );
 
-        const newRows = await query('SELECT * FROM users WHERE id = ? LIMIT 1', [adminId]);
+        const newRows = await safeQuery('SELECT * FROM users WHERE id = ? LIMIT 1', [adminId]);
         user = newRows[0];
       }
     }
@@ -53,7 +67,7 @@ export const authService = {
     }
 
     // Update updated_at timestamp
-    query('UPDATE users SET updated_at = NOW() WHERE id = ?', [user.id]).catch(() => {});
+    safeQuery('UPDATE users SET updated_at = NOW() WHERE id = ?', [user.id]).catch(() => {});
 
     const userRole = user.role || 'Admin';
 
@@ -75,7 +89,7 @@ export const authService = {
   },
 
   async getMe(userId) {
-    const rows = await query('SELECT id, email, name, role, status FROM users WHERE id = ? LIMIT 1', [userId]);
+    const rows = await safeQuery('SELECT id, email, name, role, status FROM users WHERE id = ? LIMIT 1', [userId]);
     const user = rows[0];
 
     if (!user) {
