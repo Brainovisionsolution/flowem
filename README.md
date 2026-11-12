@@ -131,44 +131,69 @@ FlowEM adheres strictly to the following principles throughout its codebase, use
 
 ---
 
-### 5. Backend Server & Persistence Architecture
+### 5. Backend Architecture & MySQL 8 Foundation (Phase 1 Completed)
 
-The backend is built with Express.js and provides RESTful endpoints with file-based JSON persistence in `server/data/db.json`.
+The backend has been transitioned from simple JSON mock persistence to a modular Express.js enterprise backend powered exclusively by **MySQL 8** and **Prisma ORM**.
 
-- **File**: `server/index.js`
-- **Data Store**: `server/data/db.json`
-- **Default Port**: `3001`
+- **Database Engine**: MySQL 8.0 exclusively (Strictly zero SQLite, zero MongoDB)
+- **Database Name**: `flowem_db`
+- **ORM**: Prisma ORM with typed client (`@prisma/client`)
+- **Connection**: `DATABASE_URL="mysql://flowem:Flowem@2026!@localhost:3306/flowem_db"`
+- **Architecture**: Modular domain structure (`config/`, `middleware/`, `utils/`, `modules/`)
+- **Persistence**: Relational schema with foreign keys, cascading deletes, unique constraints, and indexes.
 
-#### Implemented REST Endpoints:
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Backend health check and server uptime |
-| `GET` / `POST` | `/api/contacts` | Retrieve contacts or create a new contact |
-| `POST` | `/api/contacts/import` | Bulk import an array of contacts from CSV |
-| `DELETE` | `/api/contacts/:id` | Remove a contact |
-| `GET` / `POST` | `/api/lists` | Retrieve lists or create a new contact list |
-| `POST` | `/api/lists/:id/clean` | Clean invalid or dead emails from a list |
-| `GET` / `POST` | `/api/campaigns` | Retrieve campaigns or create a new campaign |
-| `PATCH` | `/api/campaigns/:id/status` | Pause or resume campaign sending |
-| `GET` / `POST` | `/api/templates` | Retrieve templates or save a new template |
-| `GET` | `/api/automations` | Retrieve all automated drip workflows |
-| `PATCH` | `/api/automations/:id/toggle` | Toggle workflow between Active and Paused |
-| `POST` | `/api/automations/:id/steps` | Append a new step to a workflow |
-| `POST` | `/api/automations/test` | Trigger a test workflow execution |
-| `GET` / `POST` | `/api/domains` | Retrieve domains or register a new domain |
-| `POST` | `/api/domains/:id/verify` | Re-verify SPF, DKIM, and DMARC DNS records |
-| `GET` / `POST` | `/api/suppressions` | Retrieve suppressed emails or add a block |
-| `DELETE` | `/api/suppressions/:id` | Unblock and restore an email address |
-| `GET` / `PUT` | `/api/organization` | Retrieve or update company profile and settings |
-| `POST` | `/api/organization/keys` | Generate a new REST API key |
-| `DELETE` | `/api/organization/keys/:id` | Revoke an existing API key |
-| `POST` | `/api/organization/webhook/test` | Test ping to the configured webhook URL |
-| `GET` / `POST` | `/api/team` | Retrieve team roster or invite a new member |
-| `DELETE` | `/api/team/:id` | Remove a teammate from the organization |
+#### Relational Schema Domains (`server/prisma/schema.prisma`):
+1. **Identity & RBAC**: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`, `Session`, `Invitation`.
+2. **Audience & Contacts**: `Contact`, `ContactList`, `ContactListMember`, `Tag`, `ContactTag`, `ContactCustomField`, `ConsentRecord`, `ImportJob`.
+3. **Templates & Design**: `Template`, `TemplateVersion`, `TemplateCategory`.
+4. **Campaigns & Transmission**: `Campaign`, `CampaignRecipient`, `CampaignEvent`, `EmailEvent`, `CampaignSchedule`.
+5. **Infrastructure**: `SenderDomain`, `SenderIdentity`, `SendingConfiguration`.
+6. **Compliance**: `Suppression`, `UnsubscribeEvent`.
+7. **Automation**: `Automation`, `AutomationStep`, `AutomationExecution`, `AutomationExecutionStep`.
+8. **Organization & Developer API**: `OrganizationSettings`, `ApiKey`, `Webhook`, `WebhookDelivery`.
+9. **Auditing & Reliability**: `AuditLog`, `Notification`, `OutboxEvent`, `IdempotencyRecord`.
 
-#### Resilient Frontend API Client (`src/services/api.ts`):
-- Connects through Vite proxy (`/api` -> `http://localhost:3001`).
-- Implements a resilient in-memory fallback layer, ensuring the application remains interactive even if the backend service is starting up or temporarily offline.
+#### Modular Server Layout:
+```text
+server/
+├── src/
+│   ├── config/
+│   │   ├── db.js             # Prisma client instance and MySQL 8 connection test
+│   │   ├── env.js            # Environment parsing and Zod validation
+│   │   └── logger.js         # Zero-emoji structured logger
+│   ├── middleware/
+│   │   ├── errorHandler.js   # Centralized error handler returning structured JSON
+│   │   ├── validate.js       # Zod schema request validation middleware
+│   │   └── requestLogger.js  # HTTP request duration logging
+│   ├── utils/
+│   │   ├── apiResponse.js    # Standardized response formatters
+│   │   └── errors.js         # Custom AppError, NotFoundError, ConflictError classes
+│   ├── modules/
+│   │   ├── contacts/         # Contacts controller, service, routes
+│   │   ├── lists/            # Contact lists controller, service, routes
+│   │   ├── campaigns/        # Campaigns wizard, status toggler, routes
+│   │   ├── templates/        # Email layout templates service, routes
+│   │   ├── automations/      # Workflow builder service, steps, routes
+│   │   ├── domains/          # DNS sender domain manager, verification
+│   │   ├── suppressions/     # Blocked email suppression compliance
+│   │   ├── organization/     # Company profile, API keys, webhook test
+│   │   ├── users/            # Team roster, invitations, RBAC roles
+│   │   ├── analytics/        # Throughput metrics and overview stats
+│   │   └── auth/             # JWT authentication, bcrypt passwords, RBAC middleware
+│   ├── routes/
+│   │   └── index.js          # Unified /api route registry
+│   ├── app.js                # Express application setup
+│   └── server.js             # Server bootstrap, port binding, graceful shutdown
+├── prisma/
+│   ├── schema.prisma         # Definitive MySQL 8 relational schema
+│   └── seed.js               # Database seeder (roles, org, default sending domain)
+├── package.json              # Server dependencies (Prisma, Express, Zod, bcrypt, JWT)
+├── .env.example              # Sample environment configuration
+└── .env                      # Local environment configuration
+```
+
+#### Zero Fallback Guarantee:
+All in-memory mock fallbacks have been removed from `src/services/api.ts`. Any backend or database errors are surfaced directly to ensure complete visibility during development and operations.
 
 ---
 
@@ -249,21 +274,43 @@ flowemb/
 npm install
 ```
 
-### 2. Start the Backend API Server
+### 2. Configure Local MySQL 8 Database
+Connect to your local MySQL 8 server and initialize the database and user:
+```sql
+CREATE DATABASE IF NOT EXISTS flowem_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'flowem'@'localhost' IDENTIFIED BY 'Flowem@2026!';
+GRANT ALL PRIVILEGES ON flowem_db.* TO 'flowem'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Update `server/.env` if you choose a custom password:
+```env
+DATABASE_URL="mysql://flowem:Flowem@2026!@localhost:3306/flowem_db"
+```
+
+### 3. Sync Database Schema & Seed Data
+```bash
+cd server
+npx prisma db push
+node prisma/seed.js
+cd ..
+```
+
+### 4. Start the Backend API Server
 In a terminal, start the Express backend server:
 ```bash
 node server/index.js
 ```
-The server will start on `http://localhost:3001`. Data modifications are saved automatically to `server/data/db.json`.
+The server will start on `http://localhost:3001`.
 
-### 3. Start the Frontend Development Server
+### 5. Start the Frontend Development Server
 In a separate terminal:
 ```bash
 npm run dev
 ```
 Open `http://localhost:5173` in your browser.
 
-### 4. Build for Production
+### 6. Build for Production
 To typecheck and bundle optimized static assets for deployment:
 ```bash
 npm run build
