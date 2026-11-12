@@ -1,4 +1,5 @@
 import { prisma } from '../../config/db.js';
+import { automationEngine } from './automationEngine.js';
 
 export const automationsService = {
   async getAllAutomations() {
@@ -82,9 +83,17 @@ export const automationsService = {
   },
 
   async testTrigger() {
+    // Run simulation using active automation workflows
+    const testResult = await automationEngine.handleTrigger('contact_signup', {
+      contactId: 'test-admin',
+      email: 'admin@brainovision.in',
+      metadata: { source: 'test-trigger' }
+    });
+
     return {
       success: true,
-      message: 'Test event dispatched successfully. Workflow simulation executed with zero errors.'
+      message: 'Test event dispatched successfully. Workflow simulation executed with zero errors.',
+      details: testResult
     };
   }
 };

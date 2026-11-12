@@ -10,6 +10,16 @@ export const campaignsController = {
     }
   },
 
+  async getById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const campaign = await campaignsService.getCampaignById(id);
+      res.json(campaign);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async create(req, res, next) {
     try {
       const campaign = await campaignsService.createCampaign(req.body);
@@ -28,6 +38,15 @@ export const campaignsController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async remove(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await campaignsService.deleteCampaign(id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
   }
 };
-

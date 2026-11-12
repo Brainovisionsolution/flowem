@@ -27,6 +27,15 @@ export const domainsController = {
     } catch (err) {
       next(err);
     }
+  },
+
+  async getQuota(req, res, next) {
+    try {
+      const quota = await domainsService.getSendQuota();
+      res.json(quota);
+    } catch (err) {
+      next(err);
+    }
   }
 };
 

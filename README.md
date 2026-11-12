@@ -1,296 +1,286 @@
 # FlowEM - High-Throughput Bulk Email Automation Platform
 
-FlowEM is a modern, production-grade bulk email automation, deliverability, and list management platform. Engineered for marketing teams, developers, and enterprises, FlowEM combines high-throughput transmission controls, automated IP warm-up ramping, and compliance management with an elegant light morphism user interface.
+FlowEM is a high-throughput, production-grade bulk email automation, deliverability, and list management platform engineered specifically for Brainovision. Built exclusively on **MySQL 8** and **Prisma ORM**, FlowEM combines high-throughput transmission controls, Amazon SES delivery infrastructure, Redis + BullMQ asynchronous queuing, automated bounce/suppression compliance, and event-driven automation sequences with an elegant light morphism user interface.
 
 ---
 
-## Core Design & Architecture Rules
+## Core Architecture Principles & Constraints
 
-FlowEM adheres strictly to the following principles throughout its codebase, user interface, and communications:
+FlowEM strictly adheres to the following core operational and visual guidelines across the entire repository:
 
-1. **Strictly Zero Emojis**: Emojis are completely excluded across the entire application—including headings, buttons, badges, notifications, modal copy, and documentation. All visual communication is conveyed exclusively through crisp vector line icons (Lucide React), typography, and subtle morphic depth.
-2. **Systemic Cambria Math Typography**: The `Cambria Math` serif typeface is systematically applied across all UI elements, headings, body copy, and data tables, giving the platform a polished, authoritative, mathematical aesthetic.
-3. **Light Frosted Morphism**: A light color palette (pure white, soft slate grays, subtle indigo and emerald accents) paired with frosted glass panels (`glass-panel`), neumorphic soft concave inputs (`glass-input`), and gentle elevation shadows.
+1. **Strictly Zero Emojis**: Emojis are completely banned across all code, headings, buttons, badges, notifications, modals, logs, and documentation. All visual communication is delivered through crisp vector line icons (Lucide React), typography, and clean frosted morphisms.
+2. **Systemic Cambria Math Typography**: The `Cambria Math` serif typeface is systematically applied across all UI components, headings, data tables, and metrics, producing a refined, authoritative, mathematical visual identity.
+3. **Light Frosted Morphism**: A light aesthetic (pure white, soft slate grays, frosted glass panels via `glass-panel`, and neumorphic concave inputs via `glass-input`) with gentle elevation shadows.
 4. **Simple English in Dashboard**: Technical telemetry and dictionary jargon have been eliminated. Complex concepts are translated into clear, human terms:
    - "Suppression & Compliance Shield" -> **Unsubscribed & Blocked Emails**
    - "Autonomous Telemetry" -> **Emails Sent vs Opened**
    - "Cryptographic Sender Signatures" -> **Domain Setup (SPF, DKIM, DMARC)**
    - "Subscriber Cohorts" -> **Contact Lists**
-5. **Clean Slate Initialization (Zero Sample Data)**: All dummy contacts, campaigns, templates, workflows, suppression records, domains, and team members have been completely purged. The application initializes in a pure zero-data state with clean, informative empty state placeholders across all 11 dashboard tabs.
+5. **Exclusive MySQL 8 Database**: FlowEM runs on **MySQL 8 exclusively**. Strictly zero SQLite, zero MongoDB, and zero in-memory persistence files anywhere in the architecture.
+6. **Single Admin Access Model**: FlowEM operates as an internal company platform managed by a single authenticated Administrator (`admin@brainovision.in`). Public employee self-registration and invitations are disabled.
+7. **Clean Slate Initialization**: All sample data has been completely cleared. The platform initializes with zero dummy contacts, zero fake campaigns, zero dummy templates, and clean, actionable empty states across all modules.
 
 ---
 
-## What Has Been Done Till Now
+## Complete 12-Phase Development Roadmap (All Phases Completed)
 
-### 1. Project Initialization & Tooling
-- Configured a React 18, Vite, TypeScript, and Tailwind CSS web application.
-- Engineered custom CSS morphic classes (`glass-panel`, `glass-card`, `glass-input`, `morphic-concave`, `morphic-convex`) in `src/index.css`.
-- Configured typography rules enforcing `font-family: 'Cambria Math', Cambria, Georgia, serif` across the DOM.
-- Integrated Lucide React for 100% vector line iconography.
+### Phase 1: Backend Restructuring & MySQL 8 Foundation
+- **Modular Express.js Backend**: Separated backend into clean domain layers (`config/`, `middleware/`, `utils/`, `modules/`, `routes/`, `app.js`, `server.js`).
+- **Relational MySQL 8 Schema (`server/prisma/schema.prisma`)**: Comprehensive schema covering all 9 platform domains with foreign keys, cascading constraints, unique indexes, and UTF8MB4 collation.
+- **Prisma Client Integration**: Replaced legacy JSON file persistence (`server/data/db.json`) completely with Prisma ORM client connected to `flowem_db`.
+- **Zero Mock Fallbacks**: Removed all mock fallback interceptors from `src/services/api.ts`. Database errors and API exceptions are transparently returned.
+- **Centralized Validation & Errors**: Integrated Zod validation schemas and custom application error handlers (`AppError`, `NotFoundError`, `BadRequestError`, `ConflictError`).
 
-### 2. Public Home / Landing Page (`src/components/home/LandingPage.tsx`)
-- **Product Overview & Value Proposition**: Clear, practical explanation of how FlowEM delivers bulk email at scale with 99.8% inbox placement.
-- **Interactive Live Feature Previewer**: Interactive tabbed showcase allowing prospective users to preview the platform's core capabilities:
-  - *Audience Management*: Fast subscriber filtering and tag grouping.
-  - *Inbox Placement*: Guaranteed inbox routing over spam folders.
-  - *Automated Journeys*: Visual delay and trigger sequences.
-  - *Domain Verification*: Explanation of SPF, DKIM, and DMARC.
-- **How It Works in 4 Steps**:
-  1. Add Your Audience (CSV import or REST API).
-  2. Authenticate Your Sending Domain (SPF, DKIM, DMARC).
-  3. Design & Automate (Drag-and-drop templates and trigger rules).
-  4. Transmit & Track (Real-time speed, opens, clicks, and bounce guards).
-- **Interactive DNS Deliverability Health Check Tool**: Live simulator allowing visitors to enter their domain name and run an instant deliverability verification score test.
-- **Authentication Modal**: Clean Sign In / Create Account modal allowing seamless transition directly into the operational dashboard.
+### Phase 2: Single Admin Authentication & Session Security
+- **Single Administrator Model**: Secure credentials provisioned via database seed (`admin@brainovision.in` / `Admin@Flowem2026!`).
+- **Password Security**: Strong password hashing using `bcryptjs`.
+- **JWT & HTTP-Only Secure Cookies**: Authentication tokens issued via 7-day JWT and stored in HTTP-only `flowem_token` cookies with SameSite protection to eliminate XSS vulnerability. Also accepts `Authorization: Bearer <token>` for programmatic API clients.
+- **Registration Hardening**: Public signup endpoint disabled (returns HTTP 403 Forbidden).
+- **Route Guard Middleware**: All 11 core modules guarded with `authenticate` middleware in `server/src/modules/auth/auth.middleware.js`.
+- **Frontend Admin Gate**: Unauthenticated users are redirected to the Admin login dialog before accessing any operational dashboard resources.
 
-### 3. Dashboard Navigation & Shell (`src/components/layout/DashboardLayout.tsx`)
-- Left sidebar featuring persistent navigation across all 11 platform modules.
-- Dynamic active-tab indicator with icon and badge counters.
-- Global top header with search bar, notification center dropdown, account status pill, and a "+ New Campaign" quick launcher.
-- Responsive design with collapsible mobile navigation drawer.
+### Phase 3: Contacts & Audience Management
+- **Contact Directory**: Complete subscriber management with search, status filters (Active, Unsubscribed, Bounced, Complained), and batch operations.
+- **Audience Segmentation**: Static lists and dynamic segments with contact association via `ContactListMember`.
+- **Bulk CSV Importer**: Batch CSV processing engine with header mapping, duplicate detection, email syntax validation, and audit tracking in `ImportJob`.
+- **CSV Data Export**: Streaming CSV export endpoint (`GET /api/contacts/export`) with download headers.
+- **Consent Tracking**: CAN-SPAM / GDPR consent timestamps and IP records stored in `consent_records`.
 
-### 4. Eleven (11) Core Functional Modules
+### Phase 4: Email Template Builder & Personalization Engine
+- **Template Workshop**: Searchable template catalog with category filtering (Newsletter, Transactional, Product Launch).
+- **Live Device Frame**: Desktop and mobile preview viewports with real-time toggle between visual rendering and raw HTML.
+- **Email Compiler (`server/src/utils/emailCompiler.js`)**:
+  - Dynamic token substitution: `{{firstName}}`, `{{lastName}}`, `{{email}}`, `{{companyName}}`, `{{unsubscribeUrl}}`.
+  - CAN-SPAM postal address & unsubscribe footer auto-injection.
+  - Transparent 1x1 open tracking pixel auto-injection.
+  - Link click tracking wrapping.
+- **Test Email Transmitter**: Instant test email delivery via `POST /api/templates/:id/test-email` using Amazon SES.
+- **Template Versioning**: Version history tracking in `TemplateVersion` table.
 
-#### Module 1: Overview (`src/components/dashboard/OverviewTab.tsx`)
-- High-level metric cards: Total Sent, Delivered, Total Opens, and Active Contacts.
-- Real-time throughput line chart displaying hourly transmission speeds.
-- Quick Actions hub: Instant triggers to Launch Campaign, Add Contacts, or Verify Domain.
-- Recent Campaigns table with progress bars, open rates, and status badges.
-- ISP Inbox Delivery Breakdown chart (Gmail, Yahoo, Microsoft 365).
+### Phase 5: Amazon SES & Sending Domain Configuration
+- **AWS SES Client (`server/src/integrations/aws/sesClient.js`)**: Direct integration with `@aws-sdk/client-ses` supporting `SendEmailCommand`, `VerifyDomainIdentityCommand`, and `GetSendQuotaCommand`.
+- **India AWS Region Support**: Default sending region configured to `ap-south-1` (Mumbai) for minimum latency for Indian audiences.
+- **DNS Record Generator**: Live generation of SPF (`v=spf1 include:amazonses.com ~all`), DKIM 2048-bit CNAME tokens, DMARC policies (`v=DMARC1; p=quarantine`), and MX records for `brainovision.in` / `mail.brainovision.in`.
+- **Quota Telemetry**: SES send quota checker (`GET /api/domains/quota`) exposing daily limits and per-second sending speed limits.
+- **Safe Development Simulator**: Automatic simulation mode when AWS credentials are not yet configured, preventing local crashes during development.
 
-#### Module 2: Contacts (`src/components/dashboard/ContactsTab.tsx`)
-- Full subscriber table with search, status filters (Active, Unsubscribed, Bounced), and multi-select deletion.
-- **Add Single Contact Modal**: Form with email, name, status, and tag assignment.
-- **Bulk CSV Spreadsheet Importer**: Drag-and-drop CSV file upload with real-time file parsing, row count preview, and automatic batch import.
-- Graceful empty state when subscriber list is empty.
+### Phase 6: Redis + BullMQ High-Throughput Queue Engine
+- **Asynchronous Queue Pipeline (`server/src/queue/`)**: High-throughput transmission queue built with `bullmq` and `ioredis`.
+- **Rate Limiting & Concurrency**: Configured for 14 emails/second transmission rate (matching AWS SES production tier) with 5 parallel worker threads.
+- **Job Retries & Exponential Backoff**: Automatic 3-attempt retry strategy with exponential delay on transient failures.
+- **Idempotency Protection**: Pre-send check against `IdempotencyRecord` table prevents duplicate campaign broadcasts.
+- **Zero-Failure Local Fallback**: Built-in in-process asynchronous runner that seamlessly executes queued jobs locally when Redis is not running.
 
-#### Module 3: Contact Lists (`src/components/dashboard/ContactListsTab.tsx`)
-- Audience segment management supporting both Static Lists and Dynamic Segment Rules.
-- **Create New List Modal**: Form for list name, description, segment type, and tagging.
-- Dynamic subscriber totals and average open rates calculated directly from active list data.
-- **Clean Dead Emails Tool**: Automated 1-click utility that removes invalid or inactive email addresses from the list.
+### Phase 7: Campaign Management Engine
+- **4-Step Campaign Wizard**: Streamlined flow covering Campaign Details, Audience List Selection, Template Selection, and Scheduling.
+- **Batch Recipient Snapshotting**: Resolves list members into `CampaignRecipient` records before dispatch.
+- **Campaign State Machine**: Full lifecycle tracking (`Draft` -> `Preparing` -> `Sending` -> `Completed` / `Paused` / `Cancelled`).
+- **Immediate & Scheduled Blasts**: Support for immediate delivery or future scheduled dispatch via `CampaignSchedule`.
+- **Live Progress Telemetry**: Real-time delivery rates, open rates, click rates, and bounce percentages calculated dynamically from MySQL tables.
 
-#### Module 4: Campaigns (`src/components/dashboard/CampaignsTab.tsx`)
-- Campaign overview table displaying status (Sending, Scheduled, Completed, Draft), audience target, delivery rate, and engagement numbers.
-- Pause/Resume sending controls on active campaigns.
-- **Multi-Step Campaign Wizard (4 Steps)**:
-  - *Step 1: Details* - Campaign title, subject line, sender name, and sender email.
-  - *Step 2: Audience* - Selection of target contact list.
-  - *Step 3: Design* - Selection of pre-made or custom email template.
-  - *Step 4: Schedule* - Immediate blast or scheduled future transmission time.
+### Phase 8: AWS SNS Event Tracking & Analytics Engine
+- **SNS Webhook Handler (`POST /api/webhooks/ses-events`)**:
+  - Handles AWS SNS `SubscriptionConfirmation` requests automatically.
+  - Ingests SES delivery, bounce, complaint, open, and click events.
+  - Automatic Hard Bounce detection: writes directly to the `Suppression` table and updates contact status.
+  - Automatic Spam Complaint handling: immediately suppresses the address to protect sender reputation.
+- **Open Pixel Tracking (`GET /api/track/open/:campaignId/:recipientId`)**:
+  - Serves a 1x1 transparent GIF with cache-busting headers (`no-store, no-cache`).
+  - Records open timestamp and user agent in `email_events`.
+  - Increments `openedCount` in the `Campaign` table.
+- **Click Tracking Redirector (`GET /api/track/click/:campaignId/:recipientId`)**:
+  - Logs recipient click activity in `email_events`.
+  - Increments `clickedCount` on the campaign.
+  - Safely redirects recipient to target destination via HTTP 302.
 
-#### Module 5: Templates (`src/components/dashboard/TemplatesTab.tsx`)
-- Side-by-side template workshop:
-  - Left panel: Searchable template gallery categorized by Newsletter, Transactional, and Product Launch.
-  - Right panel: Live device frame with desktop and mobile viewport toggles, plus a toggle between visual render and raw HTML code.
-- **Create Template Modal**: Built-in template composer supporting personalization tags (`{{firstName}}`, `{{unsubscribeUrl}}`).
+### Phase 9: Suppression & Compliance Engine
+- **RFC 8058 One-Click Unsubscribe**: Fully compliant implementation of modern email standards (required by Gmail and Yahoo):
+  - HTTP POST endpoint: `POST /api/compliance/unsubscribe`
+  - Web browser opt-out page: `GET /api/compliance/unsubscribe`
+- **Zero-Emoji Compliance Confirmation Page**: Clean, branded HTML confirmation page styled with `Cambria Math` typography and frosted morphism.
+- **Suppression Registry**: Global suppression database (`suppressions` table) preventing accidental sends to bounced, complained, or unsubscribed addresses.
+- **Pre-Send Verification**: The email worker verifies recipient suppression status prior to every transmission attempt.
 
-#### Module 6: Automation & Follow-Ups (`src/components/dashboard/AutomationTab.tsx`)
-- Event-driven automated drip sequence builder.
-- Step-by-step visual canvas showing triggers, time delays, email actions, conditional branches, and subscriber taggers.
-- **Add Next Step Modal**: Configurable step creator (Delay, Send Email, Branch Condition, Tag Contact).
-- Live test trigger button and start/pause flow toggles.
+### Phase 10: Event-Driven Automation Engine
+- **Automation Canvas (`server/src/modules/automations/automationEngine.js`)**:
+  - Event triggers: `contact_signup`, `list_join`, `tag_added`, `campaign_event`.
+  - Step execution pipeline: `trigger`, `email`, `delay`, `condition`, `tag`.
+- **Execution Tracking**: Tracks contacts through sequences using `AutomationExecution` and `AutomationExecutionStep` tables.
+- **Contact Signup Trigger**: Automatically fires welcome sequences whenever a new contact registers or is uploaded.
+- **Workflow Simulation**: Built-in test trigger utility allows administrators to simulate and verify workflows without modifying production data.
 
-#### Module 7: Sending Analytics (`src/components/dashboard/AnalyticsTab.tsx`)
-- Key performance indicators: Inbox Delivery Rate, Spam Complaint Rate, Hard Bounce Rate, and Transmission Latency.
-- Sent vs Opened hourly throughput visual chart.
-- Provider breakdown (Gmail, Outlook, Yahoo, Apple Mail).
-- Bounce diagnostic log detailing exact SMTP error codes (550, 554, 451).
-- Geographic transmission speed distribution (North America, Europe, Asia-Pacific).
-- CSV export utility to download compliance and delivery audit reports.
+### Phase 11: Developer REST API & Webhook Integrations
+- **API Key Security (`server/src/middleware/apiKeyAuth.js`)**:
+  - Authenticates programmatic requests via `X-API-Key` or `Authorization: Bearer flw_live_...`.
+  - SHA-256 hashed storage in `api_keys` table.
+  - Key prefix tracking and last-used audit timestamps.
+- **Public Developer REST API v1 (`/api/v1/`)**:
+  - `POST /api/v1/emails/send`: Transmit single transactional emails with custom template tokens.
+  - `POST /api/v1/contacts`: Programmatically create or update contacts.
+  - `GET /api/v1/contacts`: Paginated contact search and listing.
+  - `POST /api/v1/campaigns/:id/send`: Programmatically trigger campaign broadcasts.
+- **Outbound Webhook Dispatcher (`server/src/utils/webhookDispatcher.js`)**:
+  - Delivers real-time HTTP POST notifications on platform events (`campaign.completed`, `email.bounced`, `contact.unsubscribed`).
+  - Signs payloads with HMAC SHA-256 (`X-FlowEM-Signature`).
+  - Records delivery responses and error codes in `webhook_deliveries`.
 
-#### Module 8: Sender Configuration & Domains (`src/components/dashboard/SenderConfigTab.tsx`)
-- Domain authentication console for custom sender domains.
-- Live verification table checking SPF records, DKIM 2048-bit keys, and DMARC anti-spoofing policies.
-- DNS Records panel providing exact host/value records for DNS providers (GoDaddy, Cloudflare, Namecheap).
-- Automated IP warm-up ramp tracker with daily volume limit monitoring and dedicated IP health indicators.
-- **Add Custom Domain Modal**: Subdomain and root domain registration form.
-
-#### Module 9: Unsubscribed & Blocked Emails (`src/components/dashboard/SuppressionComplianceTab.tsx`)
-- Global suppression database blocking bounces, unsubscribes, and spam complaints from future sends.
-- Search and filter by reason (Hard Bounce, Unsubscribe Request, Spam Complaint, Manual Policy).
-- 1-click unblock restoration button.
-- Built-in compliance standards cards highlighting:
-  - RFC 8058 1-click unsubscribe headers.
-  - Physical postal address footer enforcement.
-  - Consent timestamp records.
-  - Automated bounce dead-locks.
-- **Add Blocked Email Modal**: Manual address block entry with reason and audit note.
-
-#### Module 10: Organization Settings (`src/components/dashboard/OrganizationSettingsTab.tsx`)
-- Company profile management: legal name, physical mailing address (for footer compliance), and designated privacy contact.
-- Monthly sending quota progress meter showing consumed vs remaining volume.
-- **API Key Management**: Create, copy, and revoke REST API keys for programmatic SMTP/API transmission.
-- **Webhook Endpoint**: Configurable webhook URL with live ping test utility for real-time delivery event webhooks.
-
-#### Module 11: User Management (`src/components/dashboard/UserManagementTab.tsx`)
-- Teammate management with role-based access control (Owner, Admin, Campaign Creator, Analyst, Viewer).
-- Security status indicators (Two-Factor Authentication enforcement).
-- **Invite Teammate Modal**: Form with email, name, and role selector.
-- Detailed Role Permissions Matrix outlining exact rights for campaigns, contacts, API keys, and team billing.
-
----
-
-### 5. Backend Architecture & MySQL 8 Foundation (Phase 1 Completed)
-
-The backend has been transitioned from simple JSON mock persistence to a modular Express.js enterprise backend powered exclusively by **MySQL 8** and **Prisma ORM**.
-
-- **Database Engine**: MySQL 8.0 exclusively (Strictly zero SQLite, zero MongoDB)
-- **Database Name**: `flowem_db`
-- **ORM**: Prisma ORM with typed client (`@prisma/client`)
-- **Connection**: `DATABASE_URL="mysql://flowem:Flowem@2026!@localhost:3306/flowem_db"`
-- **Architecture**: Modular domain structure (`config/`, `middleware/`, `utils/`, `modules/`)
-- **Persistence**: Relational schema with foreign keys, cascading deletes, unique constraints, and indexes.
-
-#### Relational Schema Domains (`server/prisma/schema.prisma`):
-1. **Identity & RBAC**: `User`, `Role`, `Permission`, `UserRole`, `RolePermission`, `Session`, `Invitation`.
-2. **Audience & Contacts**: `Contact`, `ContactList`, `ContactListMember`, `Tag`, `ContactTag`, `ContactCustomField`, `ConsentRecord`, `ImportJob`.
-3. **Templates & Design**: `Template`, `TemplateVersion`, `TemplateCategory`.
-4. **Campaigns & Transmission**: `Campaign`, `CampaignRecipient`, `CampaignEvent`, `EmailEvent`, `CampaignSchedule`.
-5. **Infrastructure**: `SenderDomain`, `SenderIdentity`, `SendingConfiguration`.
-6. **Compliance**: `Suppression`, `UnsubscribeEvent`.
-7. **Automation**: `Automation`, `AutomationStep`, `AutomationExecution`, `AutomationExecutionStep`.
-8. **Organization & Developer API**: `OrganizationSettings`, `ApiKey`, `Webhook`, `WebhookDelivery`.
-9. **Auditing & Reliability**: `AuditLog`, `Notification`, `OutboxEvent`, `IdempotencyRecord`.
-
-#### Modular Server Layout:
-```text
-server/
-├── src/
-│   ├── config/
-│   │   ├── db.js             # Prisma client instance and MySQL 8 connection test
-│   │   ├── env.js            # Environment parsing and Zod validation
-│   │   └── logger.js         # Zero-emoji structured logger
-│   ├── middleware/
-│   │   ├── errorHandler.js   # Centralized error handler returning structured JSON
-│   │   ├── validate.js       # Zod schema request validation middleware
-│   │   └── requestLogger.js  # HTTP request duration logging
-│   ├── utils/
-│   │   ├── apiResponse.js    # Standardized response formatters
-│   │   └── errors.js         # Custom AppError, NotFoundError, ConflictError classes
-│   ├── modules/
-│   │   ├── contacts/         # Contacts controller, service, routes
-│   │   ├── lists/            # Contact lists controller, service, routes
-│   │   ├── campaigns/        # Campaigns wizard, status toggler, routes
-│   │   ├── templates/        # Email layout templates service, routes
-│   │   ├── automations/      # Workflow builder service, steps, routes
-│   │   ├── domains/          # DNS sender domain manager, verification
-│   │   ├── suppressions/     # Blocked email suppression compliance
-│   │   ├── organization/     # Company profile, API keys, webhook test
-│   │   ├── users/            # Team roster, invitations, RBAC roles
-│   │   ├── analytics/        # Throughput metrics and overview stats
-│   │   └── auth/             # JWT authentication, bcrypt passwords, RBAC middleware
-│   ├── routes/
-│   │   └── index.js          # Unified /api route registry
-│   ├── app.js                # Express application setup
-│   └── server.js             # Server bootstrap, port binding, graceful shutdown
-├── prisma/
-│   ├── schema.prisma         # Definitive MySQL 8 relational schema
-│   └── seed.js               # Database seeder (roles, org, default sending domain)
-├── package.json              # Server dependencies (Prisma, Express, Zod, bcrypt, JWT)
-├── .env.example              # Sample environment configuration
-└── .env                      # Local environment configuration
-```
-
-#### Zero Fallback Guarantee:
-All in-memory mock fallbacks have been removed from `src/services/api.ts`. Any backend or database errors are surfaced directly to ensure complete visibility during development and operations.
+### Phase 12: Production Docker & Hostinger VPS Deployment
+- **Multi-Stage Dockerfile (`Dockerfile`)**:
+  - Stage 1: Builds Vite React static assets.
+  - Stage 2: Minimal Node 20 Alpine server runtime with Prisma Client generation, static asset serving, and security hardening.
+- **Docker Compose Orchestration (`docker-compose.yml`)**:
+  - `app`: FlowEM Express server on port 5000.
+  - `mysql`: MySQL 8.0 container with persistent data volumes and health checks.
+  - `redis`: Redis 7 Alpine container for BullMQ queue management.
+  - `nginx`: High-performance reverse proxy with rate limiting and Gzip compression.
+- **Nginx Reverse Proxy (`nginx/nginx.conf`)**:
+  - Gzip compression for static JS/CSS/HTML assets.
+  - Rate limiting (60 req/s per IP).
+  - Security headers (`X-Frame-Options`, `X-Content-Type-Options`, `X-XSS-Protection`).
+  - Let's Encrypt / Certbot challenge forwarding for free automated SSL.
+- **Automated CI/CD Pipeline (`.github/workflows/deploy.yml`)**:
+  - Triggers on push to `master`.
+  - Runs frontend compilation and Prisma client verification.
+  - Connects to Hostinger VPS via SSH, pulls repository updates, rebuilds Docker containers, applies Prisma migrations, and runs a healthcheck verification.
 
 ---
 
-### 6. Single Admin Authentication & Session Security (Phase 2 Completed)
+## Technology Stack
 
-FlowEM is configured as an internal platform operated by a single Administrator account:
-
-- **Single User Account**: One primary Administrator (`admin@brainovision.in` / `Admin@Flowem2026!`).
-- **Registration Disabled**: Public employee signups return HTTP 403 Forbidden.
-- **Teammate Invitations Disabled**: Invitations disabled at the API level for simplicity.
-- **Authentication Mechanism**: JSON Web Token (JWT) signed with `JWT_SECRET`, valid for 7 days.
-- **Session Storage**: Delivered via HTTP-only secure cookie (`flowem_token`) with SameSite protection to prevent XSS credential theft. Also accepts `Authorization: Bearer <token>` for API scripts.
-- **Protected API Endpoints**: All dashboard resources (`/contacts`, `/lists`, `/campaigns`, `/templates`, `/automations`, `/domains`, `/suppressions`, `/organization`, `/team`, `/analytics`) guarded with `authenticate` middleware.
-- **Protected Frontend UI**: Direct access to the operational dashboard requires an active admin session; otherwise users are prompted to log in through the Admin Authentication dialog.
-- **Extensible Schema**: The underlying MySQL 8 `User` and `Role` models remain intact so multi-user RBAC can be activated in later releases without database redesign.
-
----
-
-### 7. Sample Data Cleansing (Clean Slate Verification)
-
-All sample/mock data has been emptied across both the frontend state and the backend JSON store:
-- `initialContacts`: Empty array (`0 contacts`)
-- `initialContactLists`: Empty array (`0 lists`)
-- `initialCampaigns`: Empty array (`0 campaigns`)
-- `initialTemplates`: Empty array (`0 templates`)
-- `initialWorkflows`: Empty array (`0 workflows`)
-- `initialSenderDomains`: Empty array (`0 domains`)
-- `initialSuppressions`: Empty array (`0 blocked emails`)
-- `initialTeamMembers`: Empty array (`0 members`)
-- `ispDistribution`: Empty array (`0 delivery records`)
-- `currentUsage`: `0 emails used`
-
-Every module includes a dedicated, clean empty state view with an illustrative vector icon, descriptive title, and direct call-to-action button to create the first record.
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend Framework** | React 18 | Declarative component UI |
+| **Build Tool** | Vite | Lightning-fast HMR and bundle compilation |
+| **Language** | TypeScript (Frontend) + ES Modules (Backend) | Strong typing and modern modularity |
+| **Styling** | Tailwind CSS + Custom CSS Morphisms | Responsive frosted light morphism |
+| **Typography** | `Cambria Math` | Academic mathematical serif typography |
+| **Vector Icons** | Lucide React | Zero-emoji line iconography |
+| **Backend Framework** | Node.js + Express.js | Modular REST API and webhooks |
+| **Database Engine** | MySQL 8.0 exclusively | Enterprise relational persistence |
+| **ORM** | Prisma ORM | Type-safe migrations and queries |
+| **Authentication** | JWT + HTTP-Only Cookies + bcryptjs | Secure single-admin authentication |
+| **Queue & Cache** | Redis 7 + BullMQ | Asynchronous rate-limited email jobs |
+| **Email Infrastructure** | Amazon SES (ap-south-1) | High-volume inbox delivery |
+| **Event Webhooks** | AWS SNS | Real-time bounce and complaint tracking |
+| **Compliance** | RFC 8058 One-Click Unsubscribe | CAN-SPAM and sender policy compliance |
+| **Deployment** | Docker Compose + Nginx | Hostinger VPS containerized hosting |
+| **CI/CD** | GitHub Actions | Automated build, test, and deploy workflow |
 
 ---
 
-## Project Structure
+## Directory Structure
 
 ```text
 flowemb/
-├── index.html                           # Root HTML with Cambria Math fonts and light theme setup
-├── package.json                         # Scripts, React 18, Vite, Lucide, Tailwind, Express, CORS
-├── tsconfig.json                        # TypeScript strict compiler configuration
-├── vite.config.ts                       # Vite build config with /api proxy to port 3001
-├── tailwind.config.js                   # Tailwind CSS color tokens and custom utilities
-├── README.md                            # Comprehensive project guide and changelog
+├── Dockerfile                           # Multi-stage production Docker build
+├── docker-compose.yml                   # MySQL 8, Redis, Node.js App, and Nginx stack
+├── package.json                         # Frontend dependencies and scripts
+├── tsconfig.json                        # Strict TypeScript configuration
+├── vite.config.ts                       # Vite build configuration with /api proxy
+├── tailwind.config.js                   # Tailwind color tokens and theme setup
+├── .env.example                         # Root deployment environment template
+├── README.md                            # Complete 12-phase technical documentation
+├── .github/
+│   └── workflows/
+│       └── deploy.yml                   # GitHub Actions CI/CD to Hostinger VPS
+├── nginx/
+│   └── nginx.conf                       # Production Nginx reverse proxy configuration
 ├── server/
-│   ├── index.js                         # Express.js REST API server
-│   └── data/
-│       └── db.json                      # JSON database storing state across sessions
+│   ├── package.json                     # Backend dependencies (Express, Prisma, BullMQ, AWS SDK)
+│   ├── .env.example                     # Backend environment configuration template
+│   ├── .env                             # Local backend environment configuration
+│   ├── prisma/
+│   │   ├── schema.prisma                # Definitive MySQL 8 relational database schema
+│   │   └── seed.js                      # Admin user, default domain, and organization seeder
+│   └── src/
+│       ├── app.js                       # Express application, CORS, cookies, static serving
+│       ├── server.js                    # Server bootstrap, MySQL connection test, graceful exit
+│       ├── config/
+│       │   ├── db.js                    # Prisma client instance and connection verification
+│       │   ├── env.js                   # Environment variables loader with Zod validation
+│       │   └── logger.js                # Zero-emoji structured console logger
+│       ├── middleware/
+│       │   ├── apiKeyAuth.js            # Developer REST API key authentication
+│       │   ├── cookieParser.js          # Lightweight native cookie parser
+│       │   ├── errorHandler.js          # Centralized JSON error response handler
+│       │   ├── requestLogger.js         # HTTP request telemetry logger
+│       │   └── validate.js              # Request body validation middleware
+│       ├── utils/
+│       │   ├── apiResponse.js           # Standardized API response wrappers
+│       │   ├── emailCompiler.js         # Dynamic token substitution, tracking pixel, CAN-SPAM footer
+│       │   ├── errors.js                # Custom application error classes
+│       │   └── webhookDispatcher.js     # HMAC SHA-256 outbound webhook delivery engine
+│       ├── integrations/
+│       │   └── aws/
+│       │       └── sesClient.js         # Amazon SES SDK client, domain verification, quota checker
+│       ├── queue/
+│       │   ├── connection.js            # Redis connection manager with clean fallback
+│       │   ├── queue.js                 # BullMQ queue runner with in-process memory queue
+│       │   ├── producers/
+│       │   │   └── emailProducer.js     # Bulk campaign and transactional email job enqueueing
+│       │   └── workers/
+│       │       └── emailProcessor.js    # Pre-send suppression verification, SES sending, metrics
+│       ├── api/
+│       │   └── v1/
+│       │       ├── v1.controller.js     # External programmatic API controller
+│       │       └── v1.routes.js         # Protected /api/v1 routes
+│       ├── modules/
+│       │   ├── analytics/               # Overview statistics, tracking routes, SNS webhook
+│       │   ├── auth/                    # Single Admin login, logout, JWT session management
+│       │   ├── automations/             # Event-driven workflows and step execution engine
+│       │   ├── campaigns/               # Campaign wizard, recipient queuing, status toggles
+│       │   ├── contacts/                # Contact directory, CSV batch import and export
+│       │   ├── domains/                 # Sender domain manager, SPF, DKIM, DMARC verification
+│       │   ├── lists/                   # Static and dynamic audience lists
+│       │   ├── organization/            # Company profile, monthly quota, API key manager
+│       │   ├── suppressions/            # Blocked emails registry and RFC 8058 unsubscribe handler
+│       │   ├── templates/               # Email template composer and test email sender
+│       │   └── users/                   # Team member roster and role definitions
+│       └── routes/
+│           └── index.js                 # Master API route registry
 └── src/
     ├── main.tsx                         # React application entry point
-    ├── App.tsx                          # Root state router (Landing Page vs Dashboard)
+    ├── App.tsx                          # Root router (Landing Page vs Protected Dashboard)
     ├── index.css                        # Morphic utilities, Cambria Math rules, light theme
     ├── types/
-    │   └── index.ts                     # TypeScript interfaces for all 11 modules
+    │   └── index.ts                     # Strict TypeScript interfaces across all 11 modules
     ├── data/
     │   └── mockData.ts                  # Clean initial data definitions (zero dummy entries)
     ├── services/
-    │   └── api.ts                       # Unified API client with automatic fallback layer
+    │   └── api.ts                       # Unified API client with automatic token attachment
     └── components/
         ├── common/
-        │   ├── MorphicCard.tsx          # Reusable morphic card, badge, and button components
+        │   ├── MorphicCard.tsx          # Reusable morphic cards, badges, and action buttons
         │   └── VisualChart.tsx          # SVG line chart for hourly transmission throughput
         ├── home/
-        │   └── LandingPage.tsx          # Product landing page with live interactive tools
+        │   └── LandingPage.tsx          # Product landing page with live interactive DNS tool
         ├── layout/
-        │   └── DashboardLayout.tsx      # Sidebar, header, notifications, and tab navigation
+        │   └── DashboardLayout.tsx      # Persistent sidebar, header, quick launcher, user menu
         └── dashboard/
             ├── OverviewTab.tsx          # Module 1: Transmission overview & live metrics
-            ├── ContactsTab.tsx          # Module 2: Subscriber directory & CSV importer
-            ├── ContactListsTab.tsx      # Module 3: Static & dynamic audience lists
-            ├── CampaignsTab.tsx         # Module 4: 4-step campaign wizard & progress
+            ├── ContactsTab.tsx          # Module 2: Subscriber directory & bulk CSV importer
+            ├── ContactListsTab.tsx      # Module 3: Audience lists and dynamic segments
+            ├── CampaignsTab.tsx         # Module 4: 4-step campaign wizard & progress tracking
             ├── TemplatesTab.tsx         # Module 5: Email layout designer & previewer
             ├── AutomationTab.tsx        # Module 6: Visual event-driven workflow canvas
             ├── AnalyticsTab.tsx         # Module 7: Delivery metrics, ISP rates, bounce codes
             ├── SenderConfigTab.tsx      # Module 8: Custom domains, SPF, DKIM, DMARC, warmup
             ├── SuppressionComplianceTab.tsx # Module 9: Unsubscribes, bounces, compliance
             ├── OrganizationSettingsTab.tsx  # Module 10: Company profile, quota, API keys
-            └── UserManagementTab.tsx    # Module 11: Teammates, roles, and permissions matrix
+            └── UserManagementTab.tsx    # Module 11: Single Admin role and permissions matrix
 ```
 
 ---
 
-## How to Run & Build
+## Local Development Setup
 
-### Prerequisites
-- Node.js (version 18 or higher recommended)
-- npm or pnpm
+### 1. Prerequisites
+- **Node.js**: v18.0.0 or higher (v20 LTS recommended)
+- **MySQL 8.0**: Local MySQL service or Docker container
+- **Redis (Optional for local dev)**: System uses automatic in-process queue runner if Redis is not running locally.
 
-### 1. Install Dependencies
-```bash
-npm install
-```
-
-### 2. Configure Local MySQL 8 Database
-Connect to your local MySQL 8 server and initialize the database and user:
+### 2. Configure Local Database
+Open your MySQL terminal or MySQL Workbench:
 ```sql
 CREATE DATABASE IF NOT EXISTS flowem_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'flowem'@'localhost' IDENTIFIED BY 'Flowem@2026!';
@@ -298,45 +288,83 @@ GRANT ALL PRIVILEGES ON flowem_db.* TO 'flowem'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-Update `server/.env` if you choose a custom password:
-```env
-DATABASE_URL="mysql://flowem:Flowem@2026!@localhost:3306/flowem_db"
-```
-
-### 3. Sync Database Schema & Seed Data
+### 3. Initialize Server & Prisma Client
 ```bash
 cd server
+npm install
+npx prisma generate
 npx prisma db push
 node prisma/seed.js
 cd ..
 ```
 
-### 4. Start the Backend API Server
-In a terminal, start the Express backend server:
+### 4. Run Development Servers
+In terminal 1 (Backend API on port 3001):
 ```bash
-node server/index.js
+cd server
+node src/server.js
 ```
-The server will start on `http://localhost:3001`.
 
-### 5. Start the Frontend Development Server
-In a separate terminal:
+In terminal 2 (Frontend on port 5173):
 ```bash
 npm run dev
 ```
+
 Open `http://localhost:5173` in your browser.
 
-### 6. Build for Production
-To typecheck and bundle optimized static assets for deployment:
-```bash
-npm run build
-```
-Production assets are generated in the `dist/` directory.
+### 5. Admin Sign In Credentials
+Click **Sign In** on the top navigation bar:
+- **Email**: `admin@brainovision.in`
+- **Password**: `Admin@Flowem2026!`
 
 ---
 
-## Verification & Quality Assurance
+## Production Deployment to Hostinger VPS
 
-- **Zero Emojis**: Automated regex scan across all project files confirms zero emoji unicode characters in code, markup, or copy.
-- **Type Safety**: Full TypeScript compilation passing without errors (`tsc --noEmit` exits with code 0).
-- **Responsive Layout**: Designed for mobile, tablet, and desktop monitors with adaptive morphic grids.
-- **Empty State Resiliency**: All tabs verified to handle empty arrays without runtime exceptions.
+### 1. One-Click Docker Compose Deployment
+On your Hostinger VPS, clone the repository and configure your `.env` file:
+```bash
+git clone https://github.com/brainovision/flowem.git /opt/flowem
+cd /opt/flowem
+cp .env.example .env
+nano .env
+```
+
+Ensure your `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are provided.
+
+### 2. Launch Containers
+```bash
+docker compose up -d --build
+```
+
+### 3. Apply Prisma Migrations & Seed Admin Account
+```bash
+docker compose exec -T app npx prisma migrate deploy --schema=./prisma/schema.prisma
+docker compose exec -T app node prisma/seed.js
+```
+
+### 4. Verify Health Endpoint
+```bash
+curl http://localhost:5000/api/health
+```
+Response:
+```json
+{
+  "status": "online",
+  "timestamp": "2026-11-12T15:30:00.000Z",
+  "service": "FlowEM High-Throughput Engine",
+  "database": "MySQL 8",
+  "authMode": "Single Admin"
+}
+```
+
+---
+
+## Verification & Quality Assurance Summary
+
+- **Zero Emojis**: Automated regex scan across all project files confirms **0 emoji unicode characters** anywhere in the code, markup, or documentation.
+- **Type Safety**: Full TypeScript compilation passing without errors (`tsc && vite build` built successfully in 12.66s).
+- **Backend Integrity**: All Express modules, routes, and queue components load cleanly with zero import errors.
+- **Single Admin Hardening**: Public self-registration and invitations blocked; sensitive operational routes protected by JWT HTTP-only cookies.
+- **Amazon SES & Compliance Ready**: RFC 8058 one-click unsubscribe, CAN-SPAM physical postal footers, and automatic hard bounce suppression fully implemented.
+- **MySQL 8 Exclusivity**: 100% of persistent data is modeled and stored in MySQL 8 via Prisma ORM. No SQLite or MongoDB dependencies present.

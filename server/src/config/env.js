@@ -1,13 +1,21 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { z } from 'zod';
 
-dotenv.config();
+// Load server/.env if running from workspace root, otherwise load .env
+const serverEnvPath = path.resolve(process.cwd(), 'server/.env');
+if (fs.existsSync(serverEnvPath)) {
+  dotenv.config({ path: serverEnvPath });
+} else {
+  dotenv.config();
+}
 
 const envSchema = z.object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for MySQL 8'),
+  DATABASE_URL: z.string().default('mysql://flowem:Flowem@2026!@localhost:3306/flowem_db'),
   JWT_SECRET: z.string().default('flowem_jwt_super_secret_key_2026_brainovision'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   AWS_REGION: z.string().default('ap-south-1'),
