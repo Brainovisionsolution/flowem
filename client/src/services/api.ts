@@ -151,6 +151,38 @@ export const api = {
     body: JSON.stringify(data)
   }),
 
+  // Amazon SES v2 Direct / Test Email
+  sendDirectEmail: (data: {
+    to: string;
+    subject: string;
+    html?: string;
+    text?: string;
+    from?: string;
+    replyTo?: string;
+  }) => request<{
+    success: boolean;
+    messageId: string;
+    recipient: string;
+    sender: string;
+    subject: string;
+    simulated: boolean;
+    region: string;
+    message: string;
+    timestamp: string;
+  }>('/emails/send', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  getEmailHistory: (limit?: number) => request<Array<{
+    id: string;
+    recipient: string;
+    subject: string;
+    sender_email: string;
+    ses_message_id: string;
+    status: string;
+    sent_at: string;
+  }>>(limit ? `/emails/history?limit=${limit}` : '/emails/history'),
+
   // Automations
   getAutomations: () => request<AutomationWorkflow[]>('/automations'),
   toggleAutomation: (id: string) => request<{ success: boolean; status: string }>(`/automations/${id}/toggle`, {

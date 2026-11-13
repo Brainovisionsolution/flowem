@@ -1,15 +1,18 @@
 import {
   SESClient,
-  SendEmailCommand,
   VerifyDomainIdentityCommand,
   VerifyDomainDkimCommand,
   GetIdentityVerificationAttributesCommand,
   GetIdentityDkimAttributesCommand,
   GetSendQuotaCommand
 } from '@aws-sdk/client-ses';
+import {
+  SESv2Client,
+  SendEmailCommand as SendEmailV2Command
+} from '@aws-sdk/client-sesv2';
 import crypto from 'crypto';
 
-const region = process.env.AWS_REGION || 'ap-south-1';
+const region = process.env.AWS_REGION || 'us-east-1';
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 const defaultFromEmail = process.env.SES_DEFAULT_FROM_EMAIL || process.env.AWS_SES_FROM_EMAIL || 'it@brainovision.in';
@@ -23,9 +26,19 @@ const hasAwsCredentials = Boolean(
 );
 
 let client = null;
+let clientV2 = null;
+
 if (hasAwsCredentials) {
   try {
     client = new SESClient({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey
+      }
+    });
+
+    clientV2 = new SESv2Client({
       region,
       credentials: {
         accessKeyId,
@@ -39,7 +52,7 @@ if (hasAwsCredentials) {
 
 export const sesClient = {
   isConfigured() {
-    return Boolean(client);
+    return Boolean(clientV2 || client);
   },
 
   getRegion() {
@@ -51,14 +64,15 @@ export const sesClient = {
   },
 
   /**
-   * Transmits an email via Amazon SES SendEmailCommand or safe simulator fallback
+   * Transmits an email via Amazon SES v2 SendEmailCommand or safe simulator fallback
    */
   async sendEmail({ to, from = defaultFromEmail, subject, html, text, replyTo, headers = {} }) {
     const toAddresses = Array.isArray(to) ? to : [to];
 
-    if (!client) {
+    if (!clientV2) {
       // Development / sandbox simulation mode when AWS SES credentials are not yet configured
       const simulatedMessageId = `sim-${Date.now()}-${crypto.randomBytes(4).toString('hex')}@ses.brainovision.in`;
+      console.log(`[SES v2 Simulator] Sent email to ${toAddresses.join(', ')} from ${from}`);
       return {
         success: true,
         messageId: simulatedMessageId,
@@ -68,29 +82,31 @@ export const sesClient = {
       };
     }
 
-    const command = new SendEmailCommand({
-      Source: from,
+    const command = new SendEmailV2Command({
+      FromEmailAddress: from,
       Destination: {
         ToAddresses: toAddresses
       },
-      Message: {
-        Subject: {
-          Data: subject,
-          Charset: 'UTF-8'
-        },
-        Body: {
-          Html: {
-            Data: html,
+      Content: {
+        Simple: {
+          Subject: {
+            Data: subject || 'Notice from Brainovision',
             Charset: 'UTF-8'
           },
-          ...(text ? { Text: { Data: text, Charset: 'UTF-8' } } : {})
+          Body: {
+            Html: {
+              Data: html || '<p>Hello,</p>',
+              Charset: 'UTF-8'
+            },
+            ...(text ? { Text: { Data: text, Charset: 'UTF-8' } } : {})
+          }
         }
       },
       ...(replyTo ? { ReplyToAddresses: Array.isArray(replyTo) ? replyTo : [replyTo] } : {})
     });
 
     try {
-      const response = await client.send(command);
+      const response = await clientV2.send(command);
       return {
         success: true,
         messageId: response.MessageId,
@@ -99,7 +115,7 @@ export const sesClient = {
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error(`Amazon SES Send Error for ${toAddresses.join(', ')}:`, error.message);
+      console.error(`Amazon SES v2 Send Error for ${toAddresses.join(', ')}:`, error.message);
       throw error;
     }
   },

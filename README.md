@@ -54,12 +54,19 @@ FlowEM strictly adheres to the following core operational and visual guidelines 
 - **Test Email Transmitter**: Instant test email delivery via `POST /api/templates/:id/test-email` using Amazon SES.
 - **Template Versioning**: Version history tracking in `template_versions` table.
 
-### 5. Amazon SES & Sending Domain Configuration (`server/src/modules/domains/`)
-- **AWS SES Client (`server/src/integrations/aws/sesClient.js`)**: Direct integration with `@aws-sdk/client-ses` supporting `SendEmailCommand`, `VerifyDomainIdentityCommand`, and `GetSendQuotaCommand`.
-- **India AWS Region Support**: Default sending region configured to `ap-south-1` (Mumbai) for minimum latency for Indian audiences.
-- **DNS Record Generator**: Live generation of SPF (`v=spf1 include:amazonses.com ~all`), DKIM 2048-bit CNAME tokens, DMARC policies (`v=DMARC1; p=quarantine`), and MX records for `brainovision.in` / `mail.brainovision.in`.
-- **Quota Telemetry**: SES send quota checker (`GET /api/domains/quota`) exposing daily limits and per-second sending speed limits.
-- **Safe Development Simulator**: Automatic simulation mode when AWS credentials are not yet configured, preventing local crashes during development.
+### 5. Amazon SES v2 & Direct Email Transmitter (`server/src/modules/emails/` & `server/src/integrations/aws/`)
+- **AWS SES v2 Client (`server/src/integrations/aws/sesClient.js`)**: Modern transmission pipeline built with `@aws-sdk/client-sesv2` supporting `SendEmailCommand`, `FromEmailAddress`, and responsive HTML/plain-text payloads.
+- **Configurable Region**: Defaults to `us-east-1` (or `ap-south-1` via `AWS_REGION` in `.env`).
+- **Direct Email API (`POST /api/emails/send`)**:
+  - Transmits individual, transactional, and test emails with HTML and plain-text contents.
+  - Automatically verifies pre-send suppression rules.
+  - Logs every transmission into the MySQL 8 `email_logs` table (recipient, subject, SES Message ID, status, and timestamp).
+  - Emits telemetry events into `email_events` and increments organization usage.
+- **Interactive Dashboard Transmitter**:
+  - Live Amazon SES v2 testing tool integrated into the **Sender & Domain Setup** tab and **Templates** tab.
+  - Allows transmitting test emails directly to verified inboxes (e.g., your Gmail or company email) from `it@brainovision.in` with live Amazon SES `MessageId` feedback.
+- **DNS Record Generator**: Generates SPF (`v=spf1 include:amazonses.com ~all`), DKIM 2048-bit tokens, and DMARC policies for `brainovision.in` / `mail.brainovision.in`.
+- **Safe Simulator Fallback**: Automatically activates simulator mode when AWS credentials are not yet configured, preventing local crashes and allowing full local UI testing.
 
 ### 6. Redis + BullMQ High-Throughput Queue Engine (`server/src/queue/`)
 - **Asynchronous Queue Pipeline**: High-throughput transmission queue built with `bullmq` and `ioredis`.

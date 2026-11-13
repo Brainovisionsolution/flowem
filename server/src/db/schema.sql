@@ -290,3 +290,17 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS email_logs (
+  id VARCHAR(36) PRIMARY KEY,
+  recipient VARCHAR(191) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  sender_email VARCHAR(191) NOT NULL,
+  ses_message_id VARCHAR(191) NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'Sent',
+  html_content LONGTEXT NULL,
+  error_message TEXT NULL,
+  sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_el_recipient (recipient),
+  INDEX idx_el_msg (ses_message_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
